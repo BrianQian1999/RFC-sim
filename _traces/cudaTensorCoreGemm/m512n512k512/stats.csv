@@ -1,0 +1,2 @@
+kernel id, kernel mangled name, grid_dimX, grid_dimY, grid_dimZ, #blocks, block_dimX, block_dimY, block_dimZ, #threads, total_insts, total_reported_insts
+kernel-1.trace, _Z12compute_gemmPK6__halfS1_PKfPfff, 30, 1, 1, 30, 256, 1, 1, 256, 259872,259872
