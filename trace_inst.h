@@ -27,11 +27,11 @@ struct TraceInst {
 
 std::ostream & operator<<(std::ostream & os, const TraceInst & traceInst) {
     std::cout << "<Inst>: " << " ";
-    std::cout << "[Block ID]: " << traceInst.tb_id << " ";
-    std::cout << "[Warp ID]: " << traceInst.warp_id << " ";
-    std::cout << "[Opcode]: " << MapOpcode2String(traceInst.opcode) << " ";
+    std::cout << "[Block ID]:" << traceInst.tb_id << " ";
+    std::cout << "[Warp ID]:" << traceInst.warp_id << " ";
+    std::cout << "[Opcode]:" << MapOpcode2String(traceInst.opcode) << " ";
     for(auto reg : traceInst.regs) {
-        std::cout << "[Reg]: " << reg << " "; 
+        std::cout << "[Reg]:" << reg << " "; 
     }
     return os;
 }

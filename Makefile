@@ -1,7 +1,7 @@
 CXX = g++
-CXXFLAGS = -std=c++14 -O2
+CXXFLAGS = -std=c++14 -O3
 
-TARGET = main
+TARGET = rfc-sim.out
 
 SRCS = main.cpp
 OBJS = $(SRCS:.cpp=.o)
@@ -10,6 +10,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
+	rm $(OBJS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
