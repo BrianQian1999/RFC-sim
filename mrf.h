@@ -23,7 +23,7 @@ public:
         this->Accumulate();
     }
 
-    void ServeInst(const TraceInst & inst) {
+    void ProcInst(const TraceInst & inst) {
         for(int i = 0; i < inst.regs.size(); i++) {
             this->Access();
         }

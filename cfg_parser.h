@@ -60,6 +60,7 @@ struct GlobalCfg {
     unsigned numEntryCfg;
     
     GlobalCfg() {}
+
     void PrintCfg() {
         std::cout << "[GlobalCfg.PrintCfg] Arch = " << cfg::ARCH2Str(this->archCfg) << "\t" << "Eviction policy = "
             << cfg::EVICT_PLCY2Str(this->evictPlcyCfg) << "\t" << "Number of entries per warp = " << this->numEntryCfg << std::endl;
@@ -72,9 +73,9 @@ private:
     std::shared_ptr<GlobalCfg> __cfg_ptr; // RFC configuration pointer
 
 public: 
-    explicit CfgParser(const std::string & cfg_file, const std::shared_pt<GlobalCfg> & cfg_ptr) : __cfg_ptr(cfg_ptr) {
+    explicit CfgParser(const std::string & cfg_file, const std::shared_ptr<GlobalCfg> & cfg_ptr) : __cfg_ptr(cfg_ptr) {
         std::ifstream ifs(cfg_file);
-        this->__ifs = std::move(ifs); // move or copy, depending on the compiler
+		this->__ifs = std::move(ifs);
         if(!__ifs.is_open()) {
             throw std::runtime_error("[CfgParser] Runtime error: cannot open config file.");
         }
