@@ -8,6 +8,8 @@
 #include <stdexcept>
 
 enum InstOpcode {
+	OP_VOID = 0, // This Op doesn't exist, but kept for implementing the parser
+	
 	// Basic (Volta) SASS Opcode
 	OP_FADD = 1,
   	OP_FADD32I,
