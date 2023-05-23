@@ -15,8 +15,6 @@
 #include "trace_opcode.h"
 #include "utils.h"
 
-#define NDEBUG
-
 struct KernelInfo {
 	KernelInfo() {}
 	KernelInfo(std::string n, unsigned id, utils::Dim3<int> gridDim, utils::Dim3<int> blockDim)
@@ -215,10 +213,6 @@ public:
             return voidInst;
         }
 
-#ifndef NDEBUG
-		std::cout << "[DEBUG][TraceParser] string read from line: " << instStr << std::endl;
-#endif		
-
         // Parse the line, break into tokens
 		std::stringstream ss(instStr);
 		std::string tokStr;
@@ -226,14 +220,6 @@ public:
 		while(std::getline(ss, tokStr, ' ')) {
 			tokStrs.push_back(tokStr);
 		}
-
-#ifndef NDEBUG
-		std::cout << "[DEBUG][TraceParser] toks got from string: ";
-		for (auto tok : tokStrs) {
-			std::cout << tok << " ";
-		}
-		std::cout << std::endl;
-#endif	
 
 		// Parse the tokens
 		if(tokStrs.empty()) 

@@ -13,8 +13,11 @@
 
 struct TraceInst {	
 	// Constructor
-	TraceInst() {}
-    TraceInst(utils::Dim3<int> tb_id, unsigned w_id, InstOpcode opcode, std::vector<regOps::RegOperand> regs)
+	TraceInst() {
+		this->opcode = OP_VOID;
+	}
+    
+	TraceInst(utils::Dim3<int> tb_id, unsigned w_id, InstOpcode opcode, std::vector<regOps::RegOperand> regs)
         : tb_id(tb_id), warp_id(w_id), opcode(opcode), regs(regs) {} 
 	// TB/warp info
 	utils::Dim3<int> tb_id; // Thread Block ID
@@ -30,9 +33,11 @@ std::ostream & operator<<(std::ostream & os, const TraceInst & traceInst) {
     std::cout << "[Block ID]:" << traceInst.tb_id << " ";
     std::cout << "[Warp ID]:" << traceInst.warp_id << " ";
     std::cout << "[Opcode]:" << MapOpcode2String(traceInst.opcode) << " ";
-    for(auto reg : traceInst.regs) {
-        std::cout << "[Reg]:" << reg << " "; 
-    }
+    if(!traceInst.regs.empty()) {
+		for(auto reg : traceInst.regs) {
+        	std::cout << "[Reg]:" << reg << " "; 
+    	}
+	}
     return os;
 }
 
