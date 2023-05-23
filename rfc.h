@@ -137,17 +137,17 @@ public:
     }
 
     // RegOperand -> bool
-    bool Hit(const regOps::RegOperand & reg, size_t line_id) const {
-        for(const auto & e : this->__cache[line_id]) {
+    inline bool Hit(const regOps::RegOperand & reg, size_t line_id) const {
+		for(const auto & e : this->__cache[line_id]) {
             if(e.index == reg.RegIndex()) {
 #ifndef NDEBUG
-                std::cout << "[Rfc.Hit] reg hit: " << reg << std::endl;
+                std::cout << "[Rfc.Hit] Register cache hit: " << reg << std::endl;
 #endif
 				return true;
 			}
         }
 #ifndef NDEBUG
-		std::cout << "[Rfc.Hit] reg miss: " << reg << std::endl;
+		std::cout << "[Rfc.Hit] Register cache miss: " << reg << std::endl;
 #endif
         return false;
     }
@@ -156,7 +156,7 @@ public:
         if(this->EmptyEntryPos(line_id) == this->CfgPtr()->numEntryCfg)
             throw std::runtime_error("[Rfc.Allocate] Runtime error: allocating a full RFC");
 #ifndef NDEBUG
-		std::cout <<  "[Rfc.Allocate] Allocate for reg " << reg << std::endl;  
+		std::cout <<  "[Rfc.Allocate] Allocate cache entry for " << reg << std::endl;  
 #endif
         size_t pos = this->EmptyEntryPos(line_id);
         this->__cache[line_id][pos].index = reg.RegIndex();
@@ -168,6 +168,9 @@ public:
     void Evict(size_t line_id) {
         if(this->CfgPtr()->evictPlcyCfg == cfg::LRU) {
             auto pos = this->OldestAgePos(line_id);
+#ifndef NDEBUG
+			std::cout << "[Rfc.Evict] Evicted Pos = " << pos << std::endl;
+#endif
             if(pos >= this->__cache[line_id].size()) throw std::runtime_error("[Rfc.Evict] Runtime error: index out of range.");
 			this->__cache[line_id][pos].dirty = true;
             this->__cache[line_id][pos].age = 0;
@@ -180,36 +183,36 @@ public:
 
     // Process a register operand
     void ProcReg(const regOps::RegOperand & reg, size_t line_id) {
-#ifndef NDEBUG        
-		std::cout << "[Rfc.ProcReg] Process reg: " << reg << std::endl;
+#ifndef NDEBUG
+		std::cout << "[Rfc.ProcReg] Process register: " << reg << std::endl;
 #endif
 		// Hit
-        if(Hit(reg, line_id)) return;
+		if(Hit(reg, line_id)) return;
 
         // Miss
         if(reg.RegType() == regOps::SRC) {
             if(!this->Full(line_id)) { // If there are empty entries
-                this->MrfPtr()->Access();
+                this->MrfPtr()->Access(true);
                 this->Allocate(reg, line_id);
             }
             else { // If there is no empty entry
                 this->Evict(line_id);
-                this->MrfPtr()->Access(); // Access the MRF
+                this->MrfPtr()->Access(true); // Access the MRF
                 this->Allocate(reg, line_id);
             }
         }
         else if(reg.RegType() == regOps::DST) {
             if(!this->Full(line_id)) {
-                this->MrfPtr()->Access();
+                this->MrfPtr()->Access(false);
                 this->Allocate(reg, line_id);
             }
             else {
                 // Write through
-                this->MrfPtr()->Access();
+                this->MrfPtr()->Access(false);
             }
         }
         else 
-            throw std::runtime_error("[Rfc.ProcReg] Runtime error");
+            throw std::runtime_error("[Rfc.ProcReg] Runtime error.");
     }    
 
     // Process a trace instruction
@@ -226,9 +229,22 @@ public:
             throw std::runtime_error("[Rfc.ProcInst] Runtime error: Warp - Core id mismatch.");
         
         for(const auto & reg : inst.regs) {
-			this->ProcReg(reg, inst.warp_id);
-            this->Aging();
+			// Deal with the source regs then dest reg
+			if(reg.RegType() != regOps::DST) {
+				this->ProcReg(reg, inst.warp_id % 8);
+            	this->Aging();
+			}
         }
+
+		if(inst.regs.empty()) return;
+		else {
+			for(const auto & reg : inst.regs) {
+				if(reg.RegType() == regOps::DST) {
+					this->ProcReg(reg, inst.warp_id % 8);
+					this->Aging();
+				}
+			}
+		}
     }
 
     void PrintRfc() {
