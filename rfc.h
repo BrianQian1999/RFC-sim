@@ -152,6 +152,7 @@ public:
         return false;
     }
 
+    // RFC Entry Allocator
     void Allocate(const regOps::RegOperand & reg, size_t line_id) {
         if(this->EmptyEntryPos(line_id) == this->CfgPtr()->numEntryCfg)
             throw std::runtime_error("[Rfc.Allocate] Runtime error: allocating a full RFC");
@@ -191,15 +192,23 @@ public:
 
         // Miss
         if(reg.RegType() == regOps::SRC) {
-            if(!this->Full(line_id)) { // If there are empty entries
+            if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_BASE) {
+                if(!this->Full(line_id)) { // If there are empty entries
+                    this->MrfPtr()->Access(true);
+                    this->Allocate(reg, line_id);
+                }
+                else { // If there is no empty entry
+                    this->Evict(line_id);
+                    this->MrfPtr()->Access(true); // Access the MRF
+                    this->Allocate(reg, line_id);
+                }
+            }
+            else if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_DST) {
+                // Do not allocate for SRC registers, if miss, just access MRF
                 this->MrfPtr()->Access(true);
-                this->Allocate(reg, line_id);
             }
-            else { // If there is no empty entry
-                this->Evict(line_id);
-                this->MrfPtr()->Access(true); // Access the MRF
-                this->Allocate(reg, line_id);
-            }
+            else 
+                throw std::runtime_error("[Rfc.ProcReg] Runtime error.");
         }
         else if(reg.RegType() == regOps::DST) {
             if(!this->Full(line_id)) {
