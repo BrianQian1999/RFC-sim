@@ -13,23 +13,26 @@
 
 // namespace cfg
 namespace cfg {
-    
-    // enum UARCH
-    // Currently, only Turing uArch is considered
+    // Currently, only Turing GPU is considered
     enum ARCH {
         TURING = 0,
         VOLTA,
         AMPERE
     };
 
-    // enum EVICT_PLCY
+    // Allocation policy
+    enum ALLOC_PLCY {
+        ALLOC_BASE = 0,  // allocate for both SRC/DST registers
+        ALLOC_DST        // allocate only for DST registers
+    };
+
     enum EVICT_PLCY {
         LRU = 0,
         FIFO
     };
 
     // Pretty Printer
-    std::string ARCH2Str(const ARCH & arch) {
+    std::string ARCH2STR(const ARCH & arch) {
         std::unordered_map<ARCH, std::string> hashMap = {
             std::pair<ARCH, std::string>(VOLTA, "VOLTA"),
             std::pair<ARCH, std::string>(TURING, "TURING"),
@@ -37,18 +40,29 @@ namespace cfg {
         };
             
         auto it = hashMap.find(arch);
-        if(it == hashMap.end()) throw std::invalid_argument("[ARCH2Str] Invalid input arch.");
+        if(it == hashMap.end()) throw std::invalid_argument("[ARCH2STR] Invalid GPU architecture.");
         return it->second;
     } 
 
-    std::string EVICT_PLCY2Str(const EVICT_PLCY & plcy) {
+    std::string EVICT_PLCY2STR(const EVICT_PLCY & plcy) {
         std::unordered_map<EVICT_PLCY, std::string> hashMap = {
             std::pair<EVICT_PLCY, std::string>(LRU, "LRU"),
             std::pair<EVICT_PLCY, std::string>(FIFO, "FIFO")
         };
 
         auto it = hashMap.find(plcy);
-        if(it == hashMap.end()) throw std::invalid_argument("[EVICT_PLCY2Str] Invalid input policy.");
+        if(it == hashMap.end()) throw std::invalid_argument("[EVICT_PLCY2STR] Invalid eviction policy.");
+        return it->second;
+    }
+
+    std::string ALLOC_PLCY2STR(const ALLOC_PLCY & plcy) {
+        std::unordered_map<ALLOC_PLCY, std::string> hashMap = {
+            std::pair<ALLOC_PLCY, std::string>(ALLOC_BASE, "ALLOC_BASE"),
+            std::pair<ALLOC_PLCY, std::string>(ALLOC_DST, "ALLOC_DST")
+        };
+
+        auto it = hashMap.find(plcy);
+        if(it == hashMap.end()) throw std::invalid_argument("[EVICT_PLCY2STR] Invalid allocation policy.");
         return it->second;
     }
 };
@@ -56,14 +70,17 @@ namespace cfg {
 // struct GlobalCfg
 struct GlobalCfg {
     cfg::ARCH archCfg;
+    cfg::ALLOC_PLCY allocPlcyCfg;
     cfg::EVICT_PLCY evictPlcyCfg;
     unsigned numEntryCfg;
     
     GlobalCfg() {}
 
     void PrintCfg() {
-        std::cout << "[GlobalCfg.PrintCfg] Arch = " << cfg::ARCH2Str(this->archCfg) << "\t" << "Eviction policy = "
-            << cfg::EVICT_PLCY2Str(this->evictPlcyCfg) << "\t" << "Number of entries per warp = " << this->numEntryCfg << std::endl;
+        std::cout << "[GlobalCfg.PrintCfg] <Architecture>: " << cfg::ARCH2STR(this->archCfg) << "\n"
+            << "<Allocation Policy>: " << cfg::ALLOC_PLCY2STR(this->allocPlcyCfg) << "\t"
+            << "<Eviction Policy>: " << cfg::EVICT_PLCY2STR(this->evictPlcyCfg) << "\t" 
+            << "<# of Entries / Warp> = " << this->numEntryCfg << std::endl;
     }
 };
 
@@ -111,8 +128,16 @@ public:
             if(tokStrList[1] == "turing")
                 this->__cfg_ptr->archCfg = cfg::TURING;
             else {
-                std::cout << "[CfgParser] Unsupported arch detected. Use TURING as default." << std::endl;
+                std::cout << "[CfgParser] Unsupported arch detected. Use TURING by default." << std::endl;
             }
+        }
+        else if(tokStrList.size() >= 2 && tokStrList[0] == "-allocation_policy") {
+            if(tokStrList[1] == "base") 
+                this->__cfg_ptr->allocPlcyCfg = cfg::ALLOC_BASE;
+            else if(tokStrList[1] == "dst")
+                this->__cfg_ptr->allocPlcyCfg = cfg::ALLOC_DST;
+            else
+                std::cout << "[CfgParser] Unsupported allocation policy. Use ALLOC_BASE by default." << std::endl;
         }
         else if(tokStrList.size() >= 2 && tokStrList[0] == "-eviction_policy") {
             if(tokStrList[1] == "lru") 
@@ -120,7 +145,7 @@ public:
             else if(tokStrList[1] == "fifo")
                 this->__cfg_ptr->evictPlcyCfg = cfg::FIFO;
             else
-                std::cout << "[CfgParser] Unsupported eviction policy. Use LRU as default." << std::endl;
+                std::cout << "[CfgParser] Unsupported eviction policy. Use LRU by default." << std::endl;
         }
         else if(tokStrList.size() >= 2 && tokStrList[0] == "-n_entry_per_warp") {
             try {
