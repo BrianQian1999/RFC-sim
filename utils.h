@@ -27,6 +27,6 @@ namespace utils {
 			std::cout << "(" << dim3.x << ", " << dim3.y << ", " << dim3.z << ")";
 			return os;	
 	}
-}
+};
 
 #endif

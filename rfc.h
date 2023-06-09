@@ -16,11 +16,11 @@
 #include <stdexcept>
 #include <algorithm>
 
-#define NDEBUG
+// #define NDEBUG
 
 struct RfcEntry {
     RfcEntry() { 
-        this->index = std::numeric_limits<unsigned int>::max(); 
+        this->index = std::numeric_limits<unsigned int>::min(); 
         this->age = 0; 
         this->dirty = true;
     } 
@@ -29,9 +29,51 @@ struct RfcEntry {
     bool dirty;
 };
 
-// Basically, we have warp 0-31, assigned to 4 warp schedulers (4 Sub-Core),
-// each scheduler handles 8 warps. 
-// A Rfc object corresponds to a single scheduler 
+struct RfcStats {
+	RfcStats() {
+		this->rfcNumRd = 0;
+		this->rfcNumWr = 0;
+		this->rfcNumRdMiss = 0;
+		this->rfcNumRdHit = 0;
+		this->rfcNumWrMiss = 0;
+		this->rfcNumWrHit = 0;
+	}
+
+	unsigned long rfcNumRd;
+	unsigned long rfcNumWr;
+
+	unsigned long rfcNumRdMiss;
+	unsigned long rfcNumWrMiss;
+	unsigned long rfcNumRdHit;
+	unsigned long rfcNumWrHit;
+
+	void AccRd() { this->rfcNumRd++; }
+	void AccWr() { this->rfcNumWr++; }
+
+	void AccRdMiss() { this->rfcNumRdMiss++; }
+	void AccRdHit() { this->rfcNumRdHit++; }
+	void AccWrMiss() { this->rfcNumWrMiss++; }
+	void AccWrHit() { this->rfcNumWrHit++; }
+
+	float GetRdHitRate() {
+		float numHit = static_cast<float>(this->rfcNumRdHit);
+		float numTot = static_cast<float>(this->rfcNumRdHit + this->rfcNumRdMiss); 
+	}
+
+	float GetWrHitRate() {
+		float numHit = static_cast<float>(this->rfcNumWrHit);
+		float numTot = static_cast<float>(this->rfcNumWrHit + this->rfcNumWrMiss); 
+	}
+
+	void PPrint() {
+		std::cout << "[RfcStats.PPrint] <Read: " << this->rfcNumRd << "> <Write: " << this->rfcNumWr << ">" << std::endl;
+		std::cout << "[RfcStats.PPrint] <Read hit rate: " << this->GetRdHitRate() << "> <Write hit rate: " << this->GetWrHitRate() << ">" << std::endl;
+	}
+};
+
+
+
+// A Rfc object corresponds to a single warp scheduler 
 class Rfc {
 private:
 	size_t __core_id;
@@ -39,6 +81,8 @@ private:
     std::shared_ptr<GlobalCfg> __cfg_ptr;
     std::shared_ptr<Mrf> __mrf_ptr;
 
+	// Statistics
+	std::shared_ptr<RfcStats> __stat_ptr;
 
     // Accessors
     const std::shared_ptr<Mrf> & MrfPtr() const { return this->__mrf_ptr; }
@@ -50,21 +94,32 @@ public:
         for(auto & i : this->__cache) {
             i.resize(cfg_ptr->numEntryCfg);
 			for(auto & e : i) {
-				e.index = std::numeric_limits<unsigned int>::max();
+				e.index = std::numeric_limits<unsigned int>::min();
 				e.age = 0;
-				e.dirty = true;
+				e.dirty = false;
 			}
         }
+		this->__stat_ptr = std::make_shared<RfcStats>();
     }
     virtual ~Rfc() {}
+
+	// Get Sub-Core ID
+	size_t GetCoreId() {
+		return this->__core_id;
+	}
+
+	// Get Statistics
+	inline unsigned long GetAcc(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRd : this->__stat_ptr->rfcNumWr; }
+	inline unsigned long GetAccHit(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRdHit : this->__stat_ptr->rfcNumWrHit; }
+	inline unsigned long GetAccMiss(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRdMiss : this->__stat_ptr->rfcNumWrMiss; }
 
     // Flush Rfc
     void Flush() {
         for(auto & line : this->__cache) {
             for(auto & e : line) {
-                e.index = std::numeric_limits<unsigned int>::max();
+                e.index = std::numeric_limits<unsigned int>::min();
                 e.age = 0;
-                e.dirty = true;
+                e.dirty = false;
             }
         }
     }
@@ -73,10 +128,8 @@ public:
     void Aging() {
         for(auto & line : this->__cache) {
             for(auto & e : line) {
-                if(e.index != std::numeric_limits<unsigned int>::max() && !e.dirty) {
-                    if(e.age < std::numeric_limits<unsigned long>::max()) {
+                if(e.index != std::numeric_limits<unsigned int>::min() && e.age < std::numeric_limits<unsigned long>::max()) {
                         e.age++;
-                    }
                 }
             }
         }
@@ -85,16 +138,11 @@ public:
     // If the RFC entries are full
     inline bool Full(size_t line_id) const {
         for(const auto & e : this->__cache[line_id]) {
-            if(e.dirty) {
-#ifndef NDEBUG
-				std::cout << "[Rfc.Full] RFC line is NOT full." << std::endl; 
-#endif
+			// Basically, R0 is an empty entry
+            if(e.index == std::numeric_limits<unsigned int>::min()) {
 				return false;
 			}
         }
-#ifndef NDEBUG
-		std::cout << "[Rfc.Full] RFC line is full." << std::endl; 
-#endif
         return true;
     }
 
@@ -103,8 +151,7 @@ public:
         if(this->Full(line_id)) throw std::runtime_error("[Rfc.EmptyEntryPos] Runtime error: RFC full.");
 
         for(size_t i = 0; i < this->__cache[line_id].size(); i++)  {
-            if(this->__cache[line_id][i].index == std::numeric_limits<unsigned int>::max()
-                    || this->__cache[line_id][i].dirty) { // dirty or simply empty
+            if(this->__cache[line_id][i].index == std::numeric_limits<unsigned int>::min()) { 
                 return i;
             }
         }
@@ -130,19 +177,21 @@ public:
                 maxPos = i; 
             }
         }
+
 #ifndef NDEBUG
-        std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) << std::endl;
+std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) << std::endl;
 #endif
         return maxPos;
     }
 
     // RegOperand -> bool
-    inline bool Hit(const regOps::RegOperand & reg, size_t line_id) const {
-		for(const auto & e : this->__cache[line_id]) {
+    inline bool Hit(const regOps::RegOperand & reg, size_t line_id) {
+		for(auto & e : this->__cache[line_id]) {
             if(e.index == reg.RegIndex()) {
 #ifndef NDEBUG
                 std::cout << "[Rfc.Hit] Register cache hit: " << reg << std::endl;
 #endif
+				e.age = 0; // Reset age if hit
 				return true;
 			}
         }
@@ -153,71 +202,128 @@ public:
     }
 
     // RFC Entry Allocator
-    void Allocate(const regOps::RegOperand & reg, size_t line_id) {
+    void Allocate(const regOps::RegOperand & reg, size_t line_id, bool dFlag) {
         if(this->EmptyEntryPos(line_id) == this->CfgPtr()->numEntryCfg)
             throw std::runtime_error("[Rfc.Allocate] Runtime error: allocating a full RFC");
+
 #ifndef NDEBUG
 		std::cout <<  "[Rfc.Allocate] Allocate cache entry for " << reg << std::endl;  
 #endif
+
+		// Accumulate stats
+		this->__stat_ptr->AccWr();
+
         size_t pos = this->EmptyEntryPos(line_id);
         this->__cache[line_id][pos].index = reg.RegIndex();
         this->__cache[line_id][pos].age = 0;
-        this->__cache[line_id][pos].dirty = false;
+        this->__cache[line_id][pos].dirty = dFlag;
     }
 
-    // RFC Eviction
-    void Evict(size_t line_id) {
-        if(this->CfgPtr()->evictPlcyCfg == cfg::LRU) {
+    // RFC Replacement
+	// Return if the replaced entry is dirty
+    bool Replace(size_t line_id) {
+        if(this->CfgPtr()->rePlcyCfg == cfg::LRU) {
             auto pos = this->OldestAgePos(line_id);
+
 #ifndef NDEBUG
-			std::cout << "[Rfc.Evict] Evicted Pos = " << pos << std::endl;
+std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
 #endif
-            if(pos >= this->__cache[line_id].size()) throw std::runtime_error("[Rfc.Evict] Runtime error: index out of range.");
-			this->__cache[line_id][pos].dirty = true;
+
+            if(pos >= this->__cache[line_id].size()) 
+				throw std::runtime_error("[Rfc.Replace] Runtime error: index out of range.");
+			bool isDirty = this->__cache[line_id][pos].dirty;
+
+			this->__cache[line_id][pos].index = std::numeric_limits<unsigned int>::min();
+			this->__cache[line_id][pos].dirty = false;
             this->__cache[line_id][pos].age = 0;
+			return isDirty;
         }
         else {
-            this->__cache[line_id][0].dirty = true;
             // TODO: Implement other replacement policies
+            this->__cache[line_id][0].dirty = false;
+			return false;
         }
     }
 
     // Process a register operand
-    void ProcReg(const regOps::RegOperand & reg, size_t line_id) {
+    void ProcReg(const regOps::RegOperand & reg, size_t line_id, bool is_mma_acc_src) {
+
 #ifndef NDEBUG
 		std::cout << "[Rfc.ProcReg] Process register: " << reg << std::endl;
 #endif
+
 		// Hit
-		if(Hit(reg, line_id)) return;
+		if(Hit(reg, line_id)) {
+			if(reg.RegType() == regOps::DST) {
+				// If hit, we don't need to write to RFC
+				this->__stat_ptr->AccWrHit();
+			}
+			else if(reg.RegType() == regOps::SRC) {
+				this->__stat_ptr->AccRd(); // Read from RFC
+				this->__stat_ptr->AccRdHit();
+			}
+			return;
+		}
 
         // Miss
         if(reg.RegType() == regOps::SRC) {
+			this->__stat_ptr->AccRdMiss();
             if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_BASE) {
                 if(!this->Full(line_id)) { // If there are empty entries
                     this->MrfPtr()->Access(true);
-                    this->Allocate(reg, line_id);
+                    this->Allocate(reg, line_id, false);
                 }
                 else { // If there is no empty entry
-                    this->Evict(line_id);
-                    this->MrfPtr()->Access(true); // Access the MRF
-                    this->Allocate(reg, line_id);
+                    bool dFlag = this->Replace(line_id);
+					if(dFlag) this->MrfPtr()->Access(false); // If a dirty Reg is replaced, write back to MRF
+                    this->MrfPtr()->Access(true); // Read from MRF
+                    this->Allocate(reg, line_id, false); // Allocate a RFC entry
                 }
             }
             else if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_DST) {
-                // Do not allocate for SRC registers, if miss, just access MRF
-                this->MrfPtr()->Access(true);
+                this->MrfPtr()->Access(true); // simply Read from MRF
             }
+			// Implement the custom allocation policy
+			else if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_CUSTOM) {
+				// If alloc_custom is used, then allocate RFC entry of accumulation matrix (ACC SRC)
+				if(is_mma_acc_src) {
+					if(!this->Full(line_id)) {
+						this->MrfPtr()->Access(true); // Read from MRF
+						this->Allocate(reg, line_id, false); // Write to RFC
+					}
+					else {
+						bool dFlag = this->Replace(line_id);
+						if(dFlag) this->MrfPtr()->Access(false); // Write back to MRF
+						this->MrfPtr()->Access(true); // read from MRF
+						this->Allocate(reg, line_id, false); // Write to RFC
+					}
+				}	
+				else {
+					this->MrfPtr()->Access(true); // Read from MRF
+				}
+			}
             else 
                 throw std::runtime_error("[Rfc.ProcReg] Runtime error.");
         }
         else if(reg.RegType() == regOps::DST) {
+			this->__stat_ptr->AccWrMiss();
             if(!this->Full(line_id)) {
-                this->MrfPtr()->Access(false);
-                this->Allocate(reg, line_id);
+				// If the corresponding RFC line is not full, simply allocate a new entry, and do not access MRF
+                this->Allocate(reg, line_id, true); // write to RFC
             }
             else {
-                // Write through
-                this->MrfPtr()->Access(false);
+                // Write back
+				if(this->CfgPtr()->evPlcyCfg == cfg::WR_BACK) {
+					bool dFlag = this->Replace(line_id); // If a dirty reg is to be replaced, it must be written back to MRF to maintain consistency
+					this->Allocate(reg, line_id, true); // write to a new RFC entry
+					if(dFlag) this->MrfPtr()->Access(false); // If dirty, write back to MRF
+				}
+				// Write through
+				else {
+					this->Replace(line_id); 
+					this->Allocate(reg, line_id, false); // Write to RFC
+                	this->MrfPtr()->Access(false); // write to MRF immediately so consistency is guranteed
+				}
             }
         }
         else 
@@ -236,32 +342,39 @@ public:
 
         if(subcore_id != this->__core_id) 
             throw std::runtime_error("[Rfc.ProcInst] Runtime error: Warp - Core id mismatch.");
-        
+       
+		// Process source registers 
+		size_t reg_idx = 0;
         for(const auto & reg : inst.regs) {
-			// Deal with the source regs then dest reg
 			if(reg.RegType() != regOps::DST) {
-				this->ProcReg(reg, inst.warp_id % 8);
+				if((inst.opcode == OP_HMMA || inst.opcode == OP_IMMA || inst.opcode == OP_BMMA) && 
+					reg_idx > 9)
+					this->ProcReg(reg, inst.warp_id % 8, true);
+				else  
+					this->ProcReg(reg, inst.warp_id % 8, false);
             	this->Aging();
 			}
+			reg_idx++;
         }
 
+		// Process destination registers
 		if(inst.regs.empty()) return;
 		else {
 			for(const auto & reg : inst.regs) {
 				if(reg.RegType() == regOps::DST) {
-					this->ProcReg(reg, inst.warp_id % 8);
+					this->ProcReg(reg, inst.warp_id % 8, false);
 					this->Aging();
 				}
 			}
 		}
     }
 
-    void PrintRfc() {
+	// RFC status Pretty-printer
+    void PPrintRfc() {
         for(const auto & l : this->__cache) {
-            std::cout << "[PrintRfc] Print RFC line..." << std::endl;
             for(const auto & e : l){
                 // if(!e.dirty) std::cout << "R" << e.index << " ";
-                std::cout << "R" << e.index << "[" << e.age << "]" << "[" << e.dirty << "]" << " ";
+                std::cout << "R" << e.index << "<age:" << e.age << ", dirty?" << e.dirty << ">" << " ";
             }
             std::cout << std::endl;
         }
@@ -298,6 +411,44 @@ public:
 				throw std::runtime_error("[RfcArry.ProcInst] Runtime error");
 		}	
 	}		
+	
+	void PPrint() {
+		std::cout << "[RfcArry.PPrint]: " << std::endl;
+		for(auto & block : this->__rfc_arry) {
+			std::cout << "<Sub-Core " << block->GetCoreId() << "> " << std::endl;
+			block->PPrintRfc();
+		}
+	}
+
+	void PrintStats() {
+		unsigned long n_rd = 0;
+		unsigned long n_wr = 0;
+
+		unsigned long n_rd_hit = 0;
+		unsigned long n_rd_miss = 0;
+		unsigned long n_wr_hit = 0;
+		unsigned long n_wr_miss = 0;
+
+		for(const auto & rfcPtr : this->__rfc_arry) {
+			n_rd += rfcPtr->GetAcc(true);
+			n_wr += rfcPtr->GetAcc(false);
+
+			n_rd_hit += rfcPtr->GetAccHit(true);
+			n_wr_hit += rfcPtr->GetAccHit(false);
+			n_rd_miss += rfcPtr->GetAccMiss(true);
+			n_wr_miss += rfcPtr->GetAccMiss(false);
+		}
+
+		float n_rd_hit_flt = static_cast<float>(n_rd_hit);
+		float n_wr_hit_flt = static_cast<float>(n_wr_hit);
+		float n_rd_miss_flt = static_cast<float>(n_rd_miss);
+		float n_wr_miss_flt = static_cast<float>(n_wr_miss);
+
+		std::cout << "[RfcArry.PrintStats] Total # of READ from RFC: " << n_rd << std::endl;
+		std::cout << "[RfcArry.PrintStats] Total # of WRITE to RFC: " << n_wr << std::endl;
+		std::cout << "[RfcArry.PrintStats] RFC READ hit rate: " << n_rd_hit_flt / (n_rd_hit_flt + n_rd_miss_flt) * 100 << "%" << std::endl;
+		std::cout << "[RfcArry.PrintStats] RFC WRITE hit rate: " << n_wr_hit_flt / (n_wr_hit_flt + n_wr_miss_flt) * 100 << "%" <<  std::endl;
+	}
 };
 
 #endif

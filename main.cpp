@@ -17,6 +17,7 @@
 #include "rfc.h"
 
 // #define NDEBUG
+#define NMRF // If define NMRF, then skip MRF-only processing
 
 int main(int argc, char ** argv) {
     // Arg Parser
@@ -29,6 +30,7 @@ int main(int argc, char ** argv) {
     const std::string traceDir = std::string(argv[2]);
 	
 	const std::string traceListFile = traceDir + "/kernelslist.g";
+	std::cout << "[main] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 	std::cout << "[main] Kernel list file: " << traceListFile << std::endl;
 	std::cout << "[main] Configuration file: " << cfgFile << std::endl;
 
@@ -50,7 +52,7 @@ int main(int argc, char ** argv) {
     std::shared_ptr<CfgParser> cfgParserPtr = std::make_shared<CfgParser>(cfgFile, globalCfgPtr);
 
 	cfgParserPtr->ParseCfg();
-	globalCfgPtr->PrintCfg();
+	cfgParserPtr->PPrintCfg();
 
     // Initialize trace parser and MRF
     std::shared_ptr<Mrf> mrfPtr = std::make_shared<Mrf>();
@@ -60,8 +62,8 @@ int main(int argc, char ** argv) {
      *  Turn off RFC
      */   
 
-	std::cout << std::endl;
-    std::cout << "===========================================================================================" << std::endl;
+#ifndef NMRF
+    std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> RFC OFF >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
     std::cout << "[main] Turn off RFC..." << std::endl;
     std::cout << "[main] Start parsing..." << std::endl;
     
@@ -77,13 +79,16 @@ int main(int argc, char ** argv) {
 	std::cout << "[main] Reset..." << std::endl;
     mrfPtr->PrintStats();
     mrfPtr->Reset();
-    std::cout << "===========================================================================================" << std::endl;
-    
+    std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << std::endl;
+#endif
+
+
     /*
      *  Turn on RFC
      */
     
     std::cout << std::endl;
+    std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> RFC ON >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
     std::cout << "[main] Turn on RFC..." << std::endl;
 	std::cout << "[main] RFC configuration:" << std::endl;
     std::cout << "[main] Start parsing..." << std::endl;
@@ -100,10 +105,20 @@ int main(int argc, char ** argv) {
 				break;
 #ifndef NDEBUG
 			std::cout << "[main] Processing: " << inst << std::endl;
+			while(true) {
+				char ch = std::cin.get();
+				if(ch == '\n') 
+					break;
+			}
 #endif
 			rfcArryPtr->ProcInst(inst);
+#ifndef NDEBUG
+			rfcArryPtr->PPrint(); // For debug
+#endif
 		}
 	}
     mrfPtr->PrintStats();
+	rfcArryPtr->PrintStats();
+	std::cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << std::endl;
     return 0;
-} 
+}
