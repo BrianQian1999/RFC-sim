@@ -16,7 +16,7 @@
 #include "mrf.h"
 #include "rfc.h"
 
-// #define NDEBUG
+#define NDEBUG
 #define NMRF // If define NMRF, then skip MRF-only processing
 
 int main(int argc, char ** argv) {
@@ -56,7 +56,7 @@ int main(int argc, char ** argv) {
 
     // Initialize trace parser and MRF
     std::shared_ptr<Mrf> mrfPtr = std::make_shared<Mrf>();
-    std::unique_ptr<TraceParser> traceParserPtr = std::make_unique<TraceParser>(traceList[0]);
+    std::unique_ptr<TraceParser_t> traceParserPtr = std::make_unique<TraceParser_t>(traceList[0]);
 
     /*
      *  Turn off RFC

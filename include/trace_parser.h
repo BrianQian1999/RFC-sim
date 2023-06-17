@@ -15,9 +15,9 @@
 #include "trace_opcode.h"
 #include "utils.h"
 
-struct KernelInfo {
-	KernelInfo() {}
-	KernelInfo(std::string n, unsigned id, utils::Dim3<int> gridDim, utils::Dim3<int> blockDim)
+struct KernelInfo_t {
+	KernelInfo_t() {}
+	KernelInfo_t(std::string n, unsigned id, utils::Dim3<int> gridDim, utils::Dim3<int> blockDim)
 		: __kernel_name(n), __kernel_id(id), __grid_dim(gridDim), __block_dim(blockDim) {}
 	
 	// Kernel Infos
@@ -33,7 +33,7 @@ struct KernelInfo {
 	void ModifyBlockDim(utils::Dim3<int> dim) { this->__block_dim = dim; }
 };
 
-std::ostream & operator<< (std::ostream & os, const KernelInfo & info) {
+std::ostream & operator<< (std::ostream & os, const KernelInfo_t & info) {
 	std::cout << "[Kernel Info]: " << std::endl;
 	std::cout << "Name: " << info.__kernel_name << std::endl;
 	std::cout << "ID: " << info.__kernel_id << std::endl;
@@ -42,21 +42,21 @@ std::ostream & operator<< (std::ostream & os, const KernelInfo & info) {
 	return os;
 }
 
-class TraceParser {
+class TraceParser_t {
 public: 
-	explicit TraceParser(const std::string & s) : __fn(s) {
+	explicit TraceParser_t(const std::string & s) : __fn(s) {
 		std::ifstream ifs(s);
 		__ifs = std::move(ifs);
 		if(!__ifs.is_open()) {
-			throw std::runtime_error("[TraceParser] Runtime error: cannot open trace file.");
+			throw std::runtime_error("[TraceParser_t] Runtime error: cannot open trace file.");
 		}
         __eof = false;
 	}
-	~TraceParser() {
+	~TraceParser_t() {
 		try {
             __ifs.close();
         } catch (const std::exception & e) {
-		    std::cerr << "[~TraceParser] " << e.what() << std::endl;
+		    std::cerr << "[~TraceParser_t] " << e.what() << std::endl;
         }
 	}
 
@@ -64,20 +64,21 @@ public:
         std::ifstream ifs(s);
         this->__ifs = std::move(ifs);
 		if(!__ifs.is_open()) {
-			throw std::invalid_argument("[TraceParser] Error: Cannot open trace file.");
+			throw std::invalid_argument("[TraceParser_t] Error: Cannot open trace file.");
 		}
         __eof = false;
     }
 private:
 	std::ifstream __ifs; // Input file stream
 	std::string __fn; // Trace file name
-	KernelInfo __kernel_info; // Kernel information
+	KernelInfo_t __kernel_info; // Kernel information
 
     utils::Dim3<int> __cur_tb; // current TB ID
     unsigned __cur_warp; // current warp ID
     TraceInst __cur_inst; // current instruction
 
     bool __eof; // EOF
+
 public:
     bool IsEOF() { return this->__eof; }
 
@@ -178,7 +179,7 @@ public:
             }
             if(opcode == OP_HMMA || opcode == OP_BMMA || opcode == OP_IMMA) 
                 this->ExtendMMARegList(regs);
-            TraceInst traceInst(this->__cur_tb, this->__cur_warp, opcode, regs);
+            TraceInst traceInst(toks[0], this->__cur_tb, this->__cur_warp, opcode, regs);
             return traceInst;
         }
         else if(toks[2] == "0") {
@@ -189,7 +190,7 @@ public:
                 else
                     continue;
             }
-            TraceInst traceInst(this->__cur_tb, this->__cur_warp, opcode, regs);
+            TraceInst traceInst(toks[0], this->__cur_tb, this->__cur_warp, opcode, regs);
             return traceInst;
         }
         else {

@@ -16,7 +16,7 @@
 #include <stdexcept>
 #include <algorithm>
 
-// #define NDEBUG
+#define NDEBUG
 
 struct RfcEntry {
     RfcEntry() { 
@@ -348,7 +348,7 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
         for(const auto & reg : inst.regs) {
 			if(reg.RegType() != regOps::DST) {
 				if((inst.opcode == OP_HMMA || inst.opcode == OP_IMMA || inst.opcode == OP_BMMA) && 
-					reg_idx > 9)
+					reg_idx <= 5 && reg_idx >= 4)
 					this->ProcReg(reg, inst.warp_id % 8, true);
 				else  
 					this->ProcReg(reg, inst.warp_id % 8, false);

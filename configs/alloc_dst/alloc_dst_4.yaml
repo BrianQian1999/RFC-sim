@@ -1,0 +1,15 @@
+# arch: <0-Turing | 1-Volta | 2-Ampere>, currently only Turing is supported
+# alloc: <0-alloc_base | 1-alloc_dst>
+# replace: <0-lru | 1-fifo>
+# evict: <0-write back | 1-write through>
+
+# Note: write through is generally bad for energy efficiency
+# alloc_dst is better than alloc_base
+
+arch: 0
+n_entry: 4
+policy: 
+  - alloc: 1
+  - replace: 0
+  - evict: 0 
+
