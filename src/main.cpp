@@ -61,6 +61,7 @@ int main(int argc, char ** argv) {
 
     // Initialize trace parser and MRF
     std::shared_ptr<Mrf_t> mrfPtr = std::make_shared<Mrf_t>();
+	std::cout << "checkpt." << std::endl;
     std::unique_ptr<TraceParser_t> traceParserPtr = std::make_unique<TraceParser_t>(traceList[0], sassFile);
 
     /*

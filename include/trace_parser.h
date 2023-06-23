@@ -59,8 +59,12 @@ public:
         _eof = false;
 
         // Initialize SASS trace
-        _reuse_info_p = std::make_shared<ReuseInfo_t>(sass_s);
-        _reuse_info_p->ParseSASS();
+		try {
+        	_reuse_info_p = std::make_shared<ReuseInfo_t>(sass_s);
+        	_reuse_info_p->ParseSASS();
+		} catch (std::exception & e) {
+			std::cerr << "[TraceParser_t]: " << e.what() << std::endl;
+		}
 	}
 	~TraceParser_t() {
 		try {

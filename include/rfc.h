@@ -250,7 +250,13 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
         }
     }
 
-    // Process a register operand
+	/**
+	 * Process a register operand
+	 * This is the core part of the RFC-sim model
+     * @param reg: register operand 
+     * @param line_id: warp id, matches cache lines
+	 * @param is_mma_acc_src: used for custom allocation policy
+     **/
     void ProcReg(const regOps::RegOperand_t & reg, size_t line_id, bool is_mma_acc_src) {
 
 #ifndef NDEBUG
