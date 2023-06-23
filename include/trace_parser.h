@@ -1,4 +1,4 @@
-// Turing SASS trace parser, stdin -> struct TraceInstr
+// Turing SASS trace parser, stdin -> struct TraceInst_tr
 // Qiran Qian, <qiranq@kth.se>
 
 #ifndef TRACE_PARSER_H
@@ -14,47 +14,56 @@
 #include "trace_inst.h"
 #include "trace_opcode.h"
 #include "utils.h"
+#include "reuse_info.h"
 
 struct KernelInfo_t {
 	KernelInfo_t() {}
 	KernelInfo_t(std::string n, unsigned id, utils::Dim3<int> gridDim, utils::Dim3<int> blockDim)
-		: __kernel_name(n), __kernel_id(id), __grid_dim(gridDim), __block_dim(blockDim) {}
+		: kernelSym(n), kernelID(id), gridDim(gridDim), blockDim(blockDim) {}
 	
 	// Kernel Infos
-	std::string __kernel_name;
-	unsigned __kernel_id;
-	utils::Dim3<int> __grid_dim;
-	utils::Dim3<int> __block_dim;
+	std::string kernelSym;
+	unsigned kernelID;
+	utils::Dim3<int> gridDim;
+	utils::Dim3<int> blockDim;
 
 	// Modifiers
-	void ModifyKernelName(std::string s) { this->__kernel_name = s; }
-	void ModifyKernelID(unsigned id) { this->__kernel_id = id; }
-	void ModifyGridDim(utils::Dim3<int> dim) { this->__grid_dim = dim; }
-	void ModifyBlockDim(utils::Dim3<int> dim) { this->__block_dim = dim; }
+	void ModifyKernelName(std::string s) { this->kernelSym = s; }
+	void ModifyKernelID(unsigned id) { this->kernelID = id; }
+	void ModifyGridDim(utils::Dim3<int> dim) { this->gridDim = dim; }
+	void ModifyBlockDim(utils::Dim3<int> dim) { this->blockDim = dim; }
 };
 
 std::ostream & operator<< (std::ostream & os, const KernelInfo_t & info) {
 	std::cout << "[Kernel Info]: " << std::endl;
-	std::cout << "Name: " << info.__kernel_name << std::endl;
-	std::cout << "ID: " << info.__kernel_id << std::endl;
-	std::cout << "GridDim: " << info.__grid_dim << std::endl;
-	std::cout << "BlockDim: " << info.__block_dim << std::endl;
+	std::cout << "Name: " << info.kernelSym << std::endl;
+	std::cout << "ID: " << info.kernelID << std::endl;
+	std::cout << "GridDim: " << info.gridDim << std::endl;
+	std::cout << "BlockDim: " << info.blockDim << std::endl;
 	return os;
 }
 
+/* 
+ * @class TraceParser_t
+ * Top-level of the trace parser
+ */
 class TraceParser_t {
 public: 
-	explicit TraceParser_t(const std::string & s) : __fn(s) {
+	explicit TraceParser_t(const std::string & s, const std::string & sass_s) : _fn(s) {
 		std::ifstream ifs(s);
-		__ifs = std::move(ifs);
-		if(!__ifs.is_open()) {
+		_ifs = std::move(ifs);
+		if(!_ifs.is_open()) {
 			throw std::runtime_error("[TraceParser_t] Runtime error: cannot open trace file.");
 		}
-        __eof = false;
+        _eof = false;
+
+        // Initialize SASS trace
+        _reuse_info_p = std::make_shared<ReuseInfo_t>(sass_s);
+        _reuse_info_p->ParseSASS();
 	}
 	~TraceParser_t() {
 		try {
-            __ifs.close();
+            _ifs.close();
         } catch (const std::exception & e) {
 		    std::cerr << "[~TraceParser_t] " << e.what() << std::endl;
         }
@@ -62,54 +71,78 @@ public:
 
     void Reset(const std::string & s) {
         std::ifstream ifs(s);
-        this->__ifs = std::move(ifs);
-		if(!__ifs.is_open()) {
+        this->_ifs = std::move(ifs);
+		if(!_ifs.is_open()) {
 			throw std::invalid_argument("[TraceParser_t] Error: Cannot open trace file.");
 		}
-        __eof = false;
+        _eof = false;
     }
+
 private:
-	std::ifstream __ifs; // Input file stream
-	std::string __fn; // Trace file name
-	KernelInfo_t __kernel_info; // Kernel information
+	std::ifstream _ifs; // Input file stream
+	std::string _fn; // Trace file name
+	KernelInfo_t _kernel_info; // Kernel information
 
-    utils::Dim3<int> __cur_tb; // current TB ID
-    unsigned __cur_warp; // current warp ID
-    TraceInst __cur_inst; // current instruction
+    std::shared_ptr<ReuseInfo_t> _reuse_info_p;
 
-    bool __eof; // EOF
+    utils::Dim3<int> _cur_tb; // current TB ID
+    unsigned _cur_warp; // current warp ID
+    TraceInst_t _cur_inst; // current instruction
+
+    bool _eof; // EOF
 
 public:
-    bool IsEOF() { return this->__eof; }
+    bool IsEOF() { return this->_eof; }
 
     // string -> bool
     bool IsRegOperand(const std::string & tok) {
-        if (tok.size() < 2) return false;
-        if (tok[0] != 'R') return false;
+        if (tok.size() < 2 || tok[0] != 'R') 
+            return false;
+        
         try {
             std::stoi(tok.substr(1));
             return true;
-        } catch (const std::exception &) {
+        } catch (const std::exception & e) {
             return false;
         }
     }
 
-    // std::string -> RegOperand
-    regOps::RegOperand ParseReg(const std::string & tok, const regOps::RegOperandType regType) {
-        if(tok.size() < 2) throw std::invalid_argument("[ParseReg] Invalid input string length.");
-        if(tok[0] != 'R') throw std::invalid_argument("[ParseReg] Invalid register format.");
-        unsigned index;
+    /**
+     * Is address operand
+     * @param tok
+     **/
+    bool IsAddrOperand(const std::string & tok) {
+        return (tok.size() > 3 && tok.substr(0, 2) == "0x"); 
+    }
+
+    /**
+     * Parse register
+     * @param tok
+     * @param regType
+     **/
+    regOps::RegOperand_t ParseReg(const std::string & tok, const regOps::RegOperandType_e regType) {
+        if(tok.size() < 2) 
+            throw std::invalid_argument("[ParseReg] Invalid input string length.");
+        if(tok[0] != 'R') 
+            throw std::invalid_argument("[ParseReg] Invalid register format.");
+       
+        // Address operand
+        if(regType == regOps::ADDR) 
+            return regOps::RegOperand_t(regOps::ADDR);
+
+        // Register operand
+        unsigned index; 
         try {
             index = std::stoi(tok.substr(1));
         } catch (const std::invalid_argument & e) {
             throw std::invalid_argument("[ParseReg] Invalid register index.");
         }
-        regOps::RegOperand reg(regType, index);
+        regOps::RegOperand_t reg(regType, index);
         return reg;
     } 
     
     // vector<string> -> bool
-    bool IsTraceInst(const std::vector<std::string> & toks) {
+    bool IsTraceInst_t(const std::vector<std::string> & toks) {
         if(toks.size() < 4) return false;
         std::string strPC = toks[0];
         if(strPC.length() != 4) return false;
@@ -121,7 +154,10 @@ public:
         return true;
     }
 
-    // string -> InstOpcode
+    /*
+     * Parse opcode
+     * @param tok
+     */
     InstOpcode ParseOpcode(const std::string & tok) {
         size_t dotIndex = tok.find('.');
         if (dotIndex != std::string::npos)
@@ -130,8 +166,11 @@ public:
             return MapString2Opcode(tok); 
     }
 
-    // vector<RegOperand> -> void
-    void ExtendMMARegList(std::vector<regOps::RegOperand> & regs) {
+    /* For MMA instructions, the registers to be accessed are implicitly expressed by the instruction
+     * Extend the register list for MMA instructions 
+     * @param regs
+     */
+    void ExtendMMARegList(std::vector<regOps::RegOperand_t> & regs) {
         if(regs.size() < 4) throw std::invalid_argument("[ExtendMMARegList] Invalid argument.");
         auto reg_dst = regs[0];
         auto reg_src_a = regs[1];
@@ -140,81 +179,102 @@ public:
         
         regs.clear();
         regs.push_back(reg_dst);
-        regs.push_back(regOps::RegOperand(reg_dst.__reg_type, reg_dst.__reg_index + 1));
-        regs.push_back(regOps::RegOperand(reg_dst.__reg_type, reg_dst.__reg_index + 2));
-        regs.push_back(regOps::RegOperand(reg_dst.__reg_type, reg_dst.__reg_index + 3));
+        regs.push_back(regOps::RegOperand_t(reg_dst.regType, reg_dst.regIndex + 1));
+        regs.push_back(regOps::RegOperand_t(reg_dst.regType, reg_dst.regIndex + 2));
+        regs.push_back(regOps::RegOperand_t(reg_dst.regType, reg_dst.regIndex + 3));
 
+        // A is a half-precision Matrix
         regs.push_back(reg_src_a);
-        regs.push_back(regOps::RegOperand(reg_src_a.__reg_type, reg_src_a.__reg_index + 1));
-        regs.push_back(regOps::RegOperand(reg_src_a.__reg_type, reg_src_a.__reg_index + 2));
-        regs.push_back(regOps::RegOperand(reg_src_a.__reg_type, reg_src_a.__reg_index + 3));
+        regs.push_back(regOps::RegOperand_t(reg_src_a.regType, reg_src_a.regIndex + 1));
 
+        // B is a half-precision Matrix
         regs.push_back(reg_src_b);
-        regs.push_back(regOps::RegOperand(reg_src_b.__reg_type, reg_src_b.__reg_index + 1));
         
         regs.push_back(reg_src_c);
-        regs.push_back(regOps::RegOperand(reg_src_c.__reg_type, reg_src_c.__reg_index + 1));
-        regs.push_back(regOps::RegOperand(reg_src_c.__reg_type, reg_src_c.__reg_index + 2));
-        regs.push_back(regOps::RegOperand(reg_src_c.__reg_type, reg_src_c.__reg_index + 3));
+        regs.push_back(regOps::RegOperand_t(reg_src_c.regType, reg_src_c.regIndex + 1));
+        regs.push_back(regOps::RegOperand_t(reg_src_c.regType, reg_src_c.regIndex + 2));
+        regs.push_back(regOps::RegOperand_t(reg_src_c.regType, reg_src_c.regIndex + 3));
     }
 
-    // vector<string> -> TraceInst
-    TraceInst ParseInst(const std::vector<std::string> & toks) {
+    /*
+     * Parse instruction 
+     * @param toks
+     */
+    TraceInst_t ParseInst(const std::vector<std::string> & toks) {
         if(toks.size() < 6) 
             throw std::invalid_argument("[ParseInst] Invalid input length."); 
         
-        // Start to parse the instruction
-        InstOpcode opcode; // Instruction Opcode
-        std::vector<regOps::RegOperand> regs;
-        
-        // There are basically 2 types of instructions, [dst_num] = 0 / 1 
+        unsigned pc;
+        auto & pc_s = toks[0];
+        std::stringstream pc_ss(pc_s);
+        pc_ss >> std::hex >> pc; 
+
+        InstOpcode opcode;
+        std::vector<regOps::RegOperand_t> regs;
+       
+        // Generate register list 
         if(toks[2] == "1") {
-            regs.push_back(ParseReg(toks[3], regOps::DST)); // Push the DST reg to the list
-            opcode = this->ParseOpcode(toks[4]);
+            regs.push_back(ParseReg(toks[3], regOps::DST));
+            opcode = this->ParseOpcode(toks[4]); // Parse opcode
             for(int i = 5; i < toks.size(); i++) {
                 if(IsRegOperand(toks[i]))
                     regs.push_back(this->ParseReg(toks[i], regOps::SRC));
-                else 
-                    continue;
-            }
-            if(opcode == OP_HMMA || opcode == OP_BMMA || opcode == OP_IMMA) 
-                this->ExtendMMARegList(regs);
-            TraceInst traceInst(toks[0], this->__cur_tb, this->__cur_warp, opcode, regs);
-            return traceInst;
-        }
-        else if(toks[2] == "0") {
-            opcode = this->ParseOpcode(toks[3]);
-            for(int i = 4; i < toks.size(); i++) {
-                if(IsRegOperand(toks[i]))
-                    regs.push_back(this->ParseReg(toks[i], regOps::SRC));
+                else if(IsAddrOperand(toks[i]))
+                    regs.push_back(this->ParseReg(toks[i], regOps::ADDR));
                 else
                     continue;
             }
-            TraceInst traceInst(toks[0], this->__cur_tb, this->__cur_warp, opcode, regs);
-            return traceInst;
+
+            // Take special care to MMA instructions
+            if(opcode == OP_HMMA || opcode == OP_BMMA || opcode == OP_IMMA) {
+                this->ExtendMMARegList(regs);
+            }
+
+            // Look up reuse flags
+            auto flags = this->_reuse_info_p->reuse_info_tab.at(pc);
+
+            // Construct TraceInst_t
+            return TraceInst_t(pc, this->_cur_tb, this->_cur_warp, opcode, regs, flags);
         }
-        else {
+        else if(toks[2] == "0") {
+            opcode = this->ParseOpcode(toks[3]); // Parse Opcode
+            for(int i = 4; i < toks.size(); i++) {
+                if(IsRegOperand(toks[i]))
+                    regs.push_back(this->ParseReg(toks[i], regOps::SRC));
+                else if(IsAddrOperand(toks[i])) 
+                    regs.push_back(this->ParseReg(toks[i], regOps::ADDR));
+                else
+                    continue;
+            }
+            // Look up reuse flags
+            auto flags = this->_reuse_info_p->reuse_info_tab.at(pc);
+
+            // Construct TraceInst_t
+            return TraceInst_t(pc, this->_cur_tb, this->_cur_warp, opcode, regs, flags);
+        }
+        else
             throw std::invalid_argument("[ParseInst] Invalid input tokens.");
-        }
     }
 
-	// Parse Trace
-	TraceInst ParseTrace() {
+	/* 
+     * Top-level function of TraceParser
+     * Parse the STDIN and return the next instruction
+     */
+	TraceInst_t ParseTrace() {
         if(this->IsEOF()) {
-            TraceInst voidInst;
+            TraceInst_t voidInst;
             return voidInst;
         }
+		
+        std::string instStr;
+		std::getline(_ifs, instStr);
 
-		std::string instStr;
-		std::getline(__ifs, instStr); // Get a line from ifstream
-        if(__ifs.eof()) {
-            // std::cout << "[ParseTrace] EOF (SUCCESS)." << std::endl;
-            this->__eof = true;
-            TraceInst voidInst;
-            return voidInst;
+        if(_ifs.eof()) {
+            this->_eof = true;
+            return TraceInst_t();
         }
 
-        // Parse the line, break into tokens
+        // Generate string tokens
 		std::stringstream ss(instStr);
 		std::string tokStr;
 		std::vector<std::string> tokStrs; // SubStrings
@@ -226,12 +286,12 @@ public:
 		if(tokStrs.empty()) 
             return this->ParseTrace();
 		else if(tokStrs[0] == "-kernel" && tokStrs[1] == "name" && tokStrs.size() >= 4) {
-			this->__kernel_info.ModifyKernelName(tokStrs[3]);
+			this->_kernel_info.ModifyKernelName(tokStrs[3]);
             return this->ParseTrace();
 		}
 		else if(tokStrs[0] == "-kernel" && tokStrs[1] == "id" && tokStrs.size() >= 4) {
             try {
-			    this->__kernel_info.ModifyKernelID(std::stoi(tokStrs[3]));
+			    this->_kernel_info.ModifyKernelID(std::stoi(tokStrs[3]));
             } catch (const std::invalid_argument & e) {
                 throw std::runtime_error("[ParseLine] Invalid kernel ID.");
             }
@@ -249,11 +309,11 @@ public:
                 tb_z = std::stoi(tokStrs[3].substr(pos_z + 1, tokStrs[3].size() - pos_z - 1)); // Get position Z
                 // utils::Dim3<int> dim_tb(pos_x, pos_y, pos_z); 
             } catch (const std::exception & e) { 
-                throw std::runtime_error("[ParseLine] Invalid TB ID.");
+                throw std::runtime_error("[ParseLine] Invalid thread block ID.");
             }
-            this->__cur_tb.x = tb_x;
-            this->__cur_tb.y = tb_y;
-            this->__cur_tb.z = tb_z; 
+            this->_cur_tb.x = tb_x;
+            this->_cur_tb.y = tb_y;
+            this->_cur_tb.z = tb_z; 
             return this->ParseTrace();
         } 
         else if(tokStrs[0] == "warp" && tokStrs.size() == 3) {
@@ -265,19 +325,19 @@ public:
                 throw std::runtime_error("[ParseLine] Invalid warp ID.");
             }
             if(w_id_int < 0) throw std::runtime_error("[ParseLine] Invalid warp ID (negative).");
-            this->__cur_warp = static_cast<unsigned>(w_id_int);
+            this->_cur_warp = static_cast<unsigned>(w_id_int);
             return this->ParseTrace(); 
         }
-        else if(IsTraceInst(tokStrs)) {
-            this->__cur_inst = this->ParseInst(tokStrs);
-            return this->__cur_inst;
+        else if(IsTraceInst_t(tokStrs)) {
+            this->_cur_inst = this->ParseInst(tokStrs);
+            return this->_cur_inst;
         }
         else 
             return this->ParseTrace();
 	}
 
     void PrintCurInst() {
-        std::cout << this->__cur_inst << std::endl;
+        std::cout << this->_cur_inst << std::endl;
     }
 };
 

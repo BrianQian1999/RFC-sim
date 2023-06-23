@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <stdexcept>
 #include <array>
@@ -16,7 +17,7 @@
 
 struct ReuseInfo_t {
 	std::unique_ptr<std::ifstream> dump_ifs_ptr; // SASS input file stream
-	std::unordered_map<unsigned, std::bitset<4>> reuse_info;
+	std::unordered_map<unsigned, std::bitset<4>> reuse_info_tab;
 
 	// Constructor	
 	explicit ReuseInfo_t(const std::string & dump_file) {
@@ -49,9 +50,10 @@ struct ReuseInfo_t {
 			// Regex to detect input pattern
 			std::regex inst1st_regex("/\\*([0-9A-Fa-f]{4})\\*/");
 			std::regex inst2nd_regex("0x([0-9A-Fa-f]{16})");
-
 			std::smatch matches;
-			if(std::regex_search(toks[0], matches, inst1st_regex)) {
+          
+            // Search for the pattern
+			if(std::regex_search(toks[8], matches, inst1st_regex)) {
 				std::string pc_s;
 				std::string flag_s;
 				unsigned pc;
@@ -59,7 +61,7 @@ struct ReuseInfo_t {
 
 				// Convert PC to unsigned
 				try {
-					pc_s = matches[0].str();
+					pc_s = matches[0].str().substr(2, 4);
 					std::stringstream pc_ss(pc_s);
 					pc_ss >> std::hex >> pc; // Convert from hex to dec
 				} catch (std::exception & e) {
@@ -71,17 +73,19 @@ struct ReuseInfo_t {
 				ss = std::stringstream(line_s);
 				while(std::getline(ss, tok, ' '))
 					toks.push_back(tok);
-				if(std::regex_search(toks[1], matches, inst2nd_regex)) {
-					flag_s = matches[0].str().substr(0, 2); // e.g., for a 0x080fe2..., extract 08
-					unsigned long flag_ui;
+                if(std::regex_search(toks[toks.size() - 2], matches, inst2nd_regex)) {
+					flag_s = matches[0].str().substr(2, 2); // e.g., for a 0x080fe2..., extract 08
+                    
+                    unsigned long flag_ui;
 					std::stringstream flag_ss(flag_s);
 					flag_ss >> std::hex >> flag_ui;
-					flags = std::bitset<4>(flag_ui);
+					std::bitset<8> ctrl_flags(flag_ui);
+                    std::bitset<4> flags(ctrl_flags.to_string().substr(2, 4));
 				}
 				else 
 					throw std::runtime_error("[ReuseInfo_t.ParseSASS] Runtime error.");
 				// if(flags.any())  // If any one of 4 reuse flags is set to true
-					this->reuse_info.insert(std::make_pair(pc, flags)); // insert a new pair
+		        this->reuse_info_tab.insert(std::make_pair(pc, flags)); // insert a new pair
 			}
 			else 
 				continue;
@@ -90,8 +94,8 @@ struct ReuseInfo_t {
 
 	void PPrint() {
 		std::cout << "[ReuseInfo_t.PPrint]: \n";
-		for(auto it = this->reuse_info.begin(); it != this->reuse_info.end(); it++) {
-			std::cout << "<PC: " << std::hex << it->first << "> <flags: " << it->second << ">" << std::endl;
+	    for(auto e : this->reuse_info_tab) {
+            std::cout << "<PC: " << std::hex << e.first << "> <Flags: " << e.second << ">" << std::endl;
 		}		
 	}
 };

@@ -11,32 +11,35 @@
 #include "trace_opcode.h"
 #include "reg_operand.h"
 
-struct TraceInst {	
+struct TraceInst_t {	
 	// Constructor
-	TraceInst() {
-		this->opcode = OP_VOID;
+	TraceInst_t() {
+		this->opcode = OP_VOID; // A fake opcode
 	}
     
-	TraceInst(const std::string & pc, utils::Dim3<int> tb_id, unsigned w_id, InstOpcode opcode, std::vector<regOps::RegOperand> regs)
-        : pc(pc), tb_id(tb_id), warp_id(w_id), opcode(opcode), regs(regs) {} 
+	TraceInst_t(unsigned pc, utils::Dim3<int> tb_id, unsigned w_id, InstOpcode opcode, std::vector<regOps::RegOperand_t> regPool, const std::bitset<4> & flags)
+        : pc(pc), tb_id(tb_id), warp_id(w_id), opcode(opcode), regPool(regPool), reuse_flags(flags) {}
+
 	// TB/warp info
 	utils::Dim3<int> tb_id; // Thread Block ID
 	unsigned warp_id; // Warp ID (0 - 32 for Turing)
 
-	std::string pc;
-	// Instruction model 
+	unsigned pc;
+    std::bitset<4> reuse_flags;
+    
+    // Instruction model 
 	InstOpcode	opcode; // enum InstrOpcode opcode			
-	std::vector<regOps::RegOperand>	regs; // Registers
+	std::vector<regOps::RegOperand_t>	regPool; // Registers
 };
 
-std::ostream & operator<<(std::ostream & os, const TraceInst & traceInst) {
+std::ostream & operator<<(std::ostream & os, const TraceInst_t & traceInst) {
     std::cout << "<Inst>: " << " ";
     std::cout << "[Block ID]:" << traceInst.tb_id << " ";
     std::cout << "[Warp ID]:" << traceInst.warp_id << " ";
 	std::cout << "[PC]: " << traceInst.pc << " ";
     std::cout << "[Opcode]:" << MapOpcode2String(traceInst.opcode) << " ";
-    if(!traceInst.regs.empty()) {
-		for(auto reg : traceInst.regs) {
+    if(!traceInst.regPool.empty()) {
+		for(auto reg : traceInst.regPool) {
         	std::cout << "[Reg]:" << reg << " "; 
     	}
 	}

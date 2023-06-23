@@ -4,10 +4,11 @@ SRC_DIR = ./src
 INC_DIR = ./include
 OBJ_DIR = ./obj
 TEST_DIR = ./unittest
+YAMLLIB_DIR ?= ~/yaml-cpp/build
 
 CXX = g++
 CXXFLAGS = -std=c++14 -Ofast -I$(INC_DIR)
-LDFLAGS = -lyaml-cpp
+LDFLAGS = -L $(YAMLLIB_DIR) -lyaml-cpp
 
 TARGET = rfc-sim
 

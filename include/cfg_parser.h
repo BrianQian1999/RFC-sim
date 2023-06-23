@@ -1,8 +1,9 @@
-// Global Configuration Parser
-// Qiran QIAN, <qiranq@kth.se>
+/**
+ * Global Configuration Parser
+ * author@Qiran QIAN, <qiranq@kth.se>
+ **/
 
-#ifndef CFG_PARSER_H
-#define CFG_PARSER_H
+#pragma once
 
 #include <iostream>
 #include <fstream>
@@ -86,18 +87,18 @@ namespace cfg {
     }
 };
 
-// struct GlobalCfg
-struct GlobalCfg {
+// struct GlobalCfg_t
+struct GlobalCfg_t {
     cfg::ARCH archCfg;
     cfg::ALLOC_PLCY allocPlcyCfg;
 	cfg::REP_PLCY rePlcyCfg;
     cfg::EV_PLCY evPlcyCfg;
     unsigned numEntryCfg;
     
-    GlobalCfg() {}
+    GlobalCfg_t() {}
 
-    void PPrintGlobalCfg() {
-        std::cout << "[GlobalCfg.PrintCfg] \n<Architecture>: " << cfg::PPrintArch(this->archCfg) << "\n"
+    void PPrintGlobalCfg_t() {
+        std::cout << "[GlobalCfg_t.PrintCfg] \n<Architecture>: " << cfg::PPrintArch(this->archCfg) << "\n"
             << "<Allocation policy>: " << cfg::PPrintAllocPlcy(this->allocPlcyCfg) << "\n"
 			<< "<Replacement policy>: " << cfg::PPrintRePlcy(this->rePlcyCfg) << "\n"
             << "<Eviction policy>: " << cfg::PPrintEvPlcy(this->evPlcyCfg) << "\n" 
@@ -106,24 +107,24 @@ struct GlobalCfg {
 };
 
 /*
- *    @class CfgParser
- *    Read from a stdin file, fill a GlobalCfg struct	
+ *    @class CfgParser_t
+ *    Read from a stdin file, fill a GlobalCfg_t struct	
  */
-class CfgParser {
+class CfgParser_t {
 private:
     YAML::Node __yaml_node;
-	std::shared_ptr<GlobalCfg> __cfg_ptr;
+	std::shared_ptr<GlobalCfg_t> __cfg_ptr;
 
 public: 
-    explicit CfgParser(const std::string & file_path, const std::shared_ptr<GlobalCfg> & cfg_ptr) : __cfg_ptr(cfg_ptr) {
+    explicit CfgParser_t(const std::string & file_path, const std::shared_ptr<GlobalCfg_t> & cfg_ptr) : __cfg_ptr(cfg_ptr) {
     	try { 
 	   		this->__yaml_node = YAML::LoadFile(file_path);
 		} catch (YAML::ParserException & e) {
-			throw std::runtime_error("[CfgParser.Constructor] Runtime error.");
+			throw std::runtime_error("[CfgParser_t.Constructor] Runtime error.");
 		}
     }
 
-    virtual ~CfgParser() {}
+    virtual ~CfgParser_t() {}
 	
 	void ParseCfg() {
 		if(this->__yaml_node) {
@@ -134,13 +135,13 @@ public:
 			this->__cfg_ptr->evPlcyCfg = static_cast<cfg::EV_PLCY>(this->__yaml_node["policy"][2]["evict"].as<int>());
 		}
 		else {
-			throw std::runtime_error("[CfgParser.ParseCfg] Runtime error.");	
+			throw std::runtime_error("[CfgParser_t.ParseCfg] Runtime error.");	
 		}
 	}
 
     void PPrintCfg() {
-        this->__cfg_ptr->PPrintGlobalCfg();
+        this->__cfg_ptr->PPrintGlobalCfg_t();
     }
-};
+}; 
+//@namespace cfg
 
-#endif

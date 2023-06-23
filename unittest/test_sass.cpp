@@ -12,6 +12,7 @@ int main(int argc, char ** argv) {
 	try {
 		ReuseInfo_t reuse_info(argv[2]);
 		reuse_info.ParseSASS();
+        std::cout << "Printing...";
 		reuse_info.PPrint();	
 	} catch (std::exception & e) {
 		std::cerr << "[test_sass] " << e.what() << std::endl;

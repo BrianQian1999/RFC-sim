@@ -1,9 +1,9 @@
 // Register File Cache (RFC) for NVIDIA GPGPU
 // Qiran Qian, <qiranq@kth.se>
 
-#ifndef RFC_H
-#define RFC_H
+#pragma once
 
+#include "cfg_parser.h"
 #include "reg_operand.h"
 #include "trace_inst.h"
 #include "mrf.h"
@@ -16,10 +16,10 @@
 #include <stdexcept>
 #include <algorithm>
 
-#define NDEBUG
+// #define NDEBUG
 
-struct RfcEntry {
-    RfcEntry() { 
+struct RfcEntry_t {
+    RfcEntry_t() { 
         this->index = std::numeric_limits<unsigned int>::min(); 
         this->age = 0; 
         this->dirty = true;
@@ -29,8 +29,8 @@ struct RfcEntry {
     bool dirty;
 };
 
-struct RfcStats {
-	RfcStats() {
+struct RfcStats_t {
+	RfcStats_t() {
 		this->rfcNumRd = 0;
 		this->rfcNumWr = 0;
 		this->rfcNumRdMiss = 0;
@@ -66,32 +66,32 @@ struct RfcStats {
 	}
 
 	void PPrint() {
-		std::cout << "[RfcStats.PPrint] <Read: " << this->rfcNumRd << "> <Write: " << this->rfcNumWr << ">" << std::endl;
-		std::cout << "[RfcStats.PPrint] <Read hit rate: " << this->GetRdHitRate() << "> <Write hit rate: " << this->GetWrHitRate() << ">" << std::endl;
+		std::cout << "[RfcStats_t.PPrint] <Read: " << this->rfcNumRd << "> <Write: " << this->rfcNumWr << ">" << std::endl;
+		std::cout << "[RfcStats_t.PPrint] <Read hit rate: " << this->GetRdHitRate() << "> <Write hit rate: " << this->GetWrHitRate() << ">" << std::endl;
 	}
 };
 
 
 
 // A Rfc object corresponds to a single warp scheduler 
-class Rfc {
+class Rfc_t {
 private:
-	size_t __core_id;
-    std::array<std::vector<RfcEntry>, 8> __cache;
-    std::shared_ptr<GlobalCfg> __cfg_ptr;
-    std::shared_ptr<Mrf> __mrf_ptr;
+	size_t _core_id;
+    std::array<std::vector<RfcEntry_t>, 8> _cache;
+    std::shared_ptr<GlobalCfg_t> _cfg_ptr;
+    std::shared_ptr<Mrf_t> _mrf_ptr;
 
 	// Statistics
-	std::shared_ptr<RfcStats> __stat_ptr;
+	std::shared_ptr<RfcStats_t> _stat_ptr;
 
     // Accessors
-    const std::shared_ptr<Mrf> & MrfPtr() const { return this->__mrf_ptr; }
-    const std::shared_ptr<GlobalCfg> & CfgPtr() const { return this->__cfg_ptr; }
+    const std::shared_ptr<Mrf_t> & MrfPtr() const { return this->_mrf_ptr; }
+    const std::shared_ptr<GlobalCfg_t> & CfgPtr() const { return this->_cfg_ptr; }
 
 public:
-    explicit Rfc(const std::shared_ptr<GlobalCfg> & cfg_ptr, const std::shared_ptr<Mrf> & mrf_ptr, size_t core_id) 
-        : __cfg_ptr(cfg_ptr), __mrf_ptr(mrf_ptr), __core_id(core_id) { 
-        for(auto & i : this->__cache) {
+    explicit Rfc_t(const std::shared_ptr<GlobalCfg_t> & cfg_ptr, const std::shared_ptr<Mrf_t> & mrf_ptr, size_t core_id) 
+        : _cfg_ptr(cfg_ptr), _mrf_ptr(mrf_ptr), _core_id(core_id) { 
+        for(auto & i : this->_cache) {
             i.resize(cfg_ptr->numEntryCfg);
 			for(auto & e : i) {
 				e.index = std::numeric_limits<unsigned int>::min();
@@ -99,23 +99,23 @@ public:
 				e.dirty = false;
 			}
         }
-		this->__stat_ptr = std::make_shared<RfcStats>();
+		this->_stat_ptr = std::make_shared<RfcStats_t>();
     }
-    virtual ~Rfc() {}
+    virtual ~Rfc_t() {}
 
 	// Get Sub-Core ID
 	size_t GetCoreId() {
-		return this->__core_id;
+		return this->_core_id;
 	}
 
 	// Get Statistics
-	inline unsigned long GetAcc(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRd : this->__stat_ptr->rfcNumWr; }
-	inline unsigned long GetAccHit(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRdHit : this->__stat_ptr->rfcNumWrHit; }
-	inline unsigned long GetAccMiss(bool is_rd) const { return is_rd ? this->__stat_ptr->rfcNumRdMiss : this->__stat_ptr->rfcNumWrMiss; }
+	inline unsigned long GetAcc(bool is_rd) const { return is_rd ? this->_stat_ptr->rfcNumRd : this->_stat_ptr->rfcNumWr; }
+	inline unsigned long GetAccHit(bool is_rd) const { return is_rd ? this->_stat_ptr->rfcNumRdHit : this->_stat_ptr->rfcNumWrHit; }
+	inline unsigned long GetAccMiss(bool is_rd) const { return is_rd ? this->_stat_ptr->rfcNumRdMiss : this->_stat_ptr->rfcNumWrMiss; }
 
     // Flush Rfc
     void Flush() {
-        for(auto & line : this->__cache) {
+        for(auto & line : this->_cache) {
             for(auto & e : line) {
                 e.index = std::numeric_limits<unsigned int>::min();
                 e.age = 0;
@@ -126,7 +126,7 @@ public:
 
     // Aging Rfc entries
     void Aging() {
-        for(auto & line : this->__cache) {
+        for(auto & line : this->_cache) {
             for(auto & e : line) {
                 if(e.index != std::numeric_limits<unsigned int>::min() && e.age < std::numeric_limits<unsigned long>::max()) {
                         e.age++;
@@ -137,7 +137,7 @@ public:
     
     // If the RFC entries are full
     inline bool Full(size_t line_id) const {
-        for(const auto & e : this->__cache[line_id]) {
+        for(const auto & e : this->_cache[line_id]) {
 			// Basically, R0 is an empty entry
             if(e.index == std::numeric_limits<unsigned int>::min()) {
 				return false;
@@ -150,8 +150,8 @@ public:
     size_t EmptyEntryPos(size_t line_id) const { 
         if(this->Full(line_id)) throw std::runtime_error("[Rfc.EmptyEntryPos] Runtime error: RFC full.");
 
-        for(size_t i = 0; i < this->__cache[line_id].size(); i++)  {
-            if(this->__cache[line_id][i].index == std::numeric_limits<unsigned int>::min()) { 
+        for(size_t i = 0; i < this->_cache[line_id].size(); i++)  {
+            if(this->_cache[line_id][i].index == std::numeric_limits<unsigned int>::min()) { 
                 return i;
             }
         }
@@ -162,7 +162,7 @@ public:
     // Return the oldest age value
     unsigned OldestAge(size_t line_id) const {
         unsigned maxAge = 0;
-        for(const auto & entry : this->__cache[line_id]) {
+        for(const auto & entry : this->_cache[line_id]) {
             if(entry.age > maxAge || !entry.dirty) maxAge = entry.age;
         }
         return maxAge;
@@ -171,9 +171,9 @@ public:
     size_t OldestAgePos(size_t line_id) const {
         size_t maxPos = 0;
         unsigned maxAge = 0;
-        for(size_t i = 0; i < this->__cache[line_id].size(); i++) {
-            if(this->__cache[line_id][i].age > maxAge && !this->__cache[line_id][i].dirty) {
-                maxAge = this->__cache[line_id][i].age;
+        for(size_t i = 0; i < this->_cache[line_id].size(); i++) {
+            if(this->_cache[line_id][i].age > maxAge && !this->_cache[line_id][i].dirty) {
+                maxAge = this->_cache[line_id][i].age;
                 maxPos = i; 
             }
         }
@@ -184,9 +184,9 @@ std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) 
         return maxPos;
     }
 
-    // RegOperand -> bool
-    inline bool Hit(const regOps::RegOperand & reg, size_t line_id) {
-		for(auto & e : this->__cache[line_id]) {
+    // RegOperand_t -> bool
+    inline bool Hit(const regOps::RegOperand_t & reg, size_t line_id) {
+		for(auto & e : this->_cache[line_id]) {
             if(e.index == reg.RegIndex()) {
 #ifndef NDEBUG
                 std::cout << "[Rfc.Hit] Register cache hit: " << reg << std::endl;
@@ -202,7 +202,7 @@ std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) 
     }
 
     // RFC Entry Allocator
-    void Allocate(const regOps::RegOperand & reg, size_t line_id, bool dFlag) {
+    void Allocate(const regOps::RegOperand_t & reg, size_t line_id, bool dFlag) {
         if(this->EmptyEntryPos(line_id) == this->CfgPtr()->numEntryCfg)
             throw std::runtime_error("[Rfc.Allocate] Runtime error: allocating a full RFC");
 
@@ -211,12 +211,12 @@ std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) 
 #endif
 
 		// Accumulate stats
-		this->__stat_ptr->AccWr();
+		this->_stat_ptr->AccWr();
 
         size_t pos = this->EmptyEntryPos(line_id);
-        this->__cache[line_id][pos].index = reg.RegIndex();
-        this->__cache[line_id][pos].age = 0;
-        this->__cache[line_id][pos].dirty = dFlag;
+        this->_cache[line_id][pos].index = reg.RegIndex();
+        this->_cache[line_id][pos].age = 0;
+        this->_cache[line_id][pos].dirty = dFlag;
     }
 
     // RFC Replacement
@@ -229,24 +229,24 @@ std::cout << "[Rfc.OldestAgePos] " << maxPos << " " << this->OldestAge(line_id) 
 std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
 #endif
 
-            if(pos >= this->__cache[line_id].size()) 
+            if(pos >= this->_cache[line_id].size()) 
 				throw std::runtime_error("[Rfc.Replace] Runtime error: index out of range.");
-			bool isDirty = this->__cache[line_id][pos].dirty;
+			bool isDirty = this->_cache[line_id][pos].dirty;
 
-			this->__cache[line_id][pos].index = std::numeric_limits<unsigned int>::min();
-			this->__cache[line_id][pos].dirty = false;
-            this->__cache[line_id][pos].age = 0;
+			this->_cache[line_id][pos].index = std::numeric_limits<unsigned int>::min();
+			this->_cache[line_id][pos].dirty = false;
+            this->_cache[line_id][pos].age = 0;
 			return isDirty;
         }
         else {
             // TODO: Implement other replacement policies
-            this->__cache[line_id][0].dirty = false;
+            this->_cache[line_id][0].dirty = false;
 			return false;
         }
     }
 
     // Process a register operand
-    void ProcReg(const regOps::RegOperand & reg, size_t line_id, bool is_mma_acc_src) {
+    void ProcReg(const regOps::RegOperand_t & reg, size_t line_id, bool is_mma_acc_src) {
 
 #ifndef NDEBUG
 		std::cout << "[Rfc.ProcReg] Process register: " << reg << std::endl;
@@ -256,18 +256,18 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
 		if(Hit(reg, line_id)) {
 			if(reg.RegType() == regOps::DST) {
 				// If hit, we don't need to write to RFC
-				this->__stat_ptr->AccWrHit();
+				this->_stat_ptr->AccWrHit();
 			}
 			else if(reg.RegType() == regOps::SRC) {
-				this->__stat_ptr->AccRd(); // Read from RFC
-				this->__stat_ptr->AccRdHit();
+				this->_stat_ptr->AccRd(); // Read from RFC
+				this->_stat_ptr->AccRdHit();
 			}
 			return;
 		}
 
         // Miss
         if(reg.RegType() == regOps::SRC) {
-			this->__stat_ptr->AccRdMiss();
+			this->_stat_ptr->AccRdMiss();
             if(this->CfgPtr()->allocPlcyCfg == cfg::ALLOC_BASE) {
                 if(!this->Full(line_id)) { // If there are empty entries
                     this->MrfPtr()->Access(true);
@@ -306,7 +306,7 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
                 throw std::runtime_error("[Rfc.ProcReg] Runtime error.");
         }
         else if(reg.RegType() == regOps::DST) {
-			this->__stat_ptr->AccWrMiss();
+			this->_stat_ptr->AccWrMiss();
             if(!this->Full(line_id)) {
 				// If the corresponding RFC line is not full, simply allocate a new entry, and do not access MRF
                 this->Allocate(reg, line_id, true); // write to RFC
@@ -331,7 +331,7 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
     }    
 
     // Process a trace instruction
-    void ProcInst(const TraceInst & inst) {
+    void ProcInst(const TraceInst_t & inst) {
         // Check warp id
 		size_t subcore_id;
 		if(this->CfgPtr()->archCfg == cfg::TURING) 
@@ -340,12 +340,12 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
         	subcore_id = inst.warp_id % 4;
 			
 
-        if(subcore_id != this->__core_id) 
+        if(subcore_id != this->_core_id) 
             throw std::runtime_error("[Rfc.ProcInst] Runtime error: Warp - Core id mismatch.");
        
 		// Process source registers 
 		size_t reg_idx = 0;
-        for(const auto & reg : inst.regs) {
+        for(const auto & reg : inst.regPool) {
 			if(reg.RegType() != regOps::DST) {
 				if((inst.opcode == OP_HMMA || inst.opcode == OP_IMMA || inst.opcode == OP_BMMA) && 
 					reg_idx <= 5 && reg_idx >= 4)
@@ -358,9 +358,9 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
         }
 
 		// Process destination registers
-		if(inst.regs.empty()) return;
+		if(inst.regPool.empty()) return;
 		else {
-			for(const auto & reg : inst.regs) {
+			for(const auto & reg : inst.regPool) {
 				if(reg.RegType() == regOps::DST) {
 					this->ProcReg(reg, inst.warp_id % 8, false);
 					this->Aging();
@@ -371,7 +371,7 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
 
 	// RFC status Pretty-printer
     void PPrintRfc() {
-        for(const auto & l : this->__cache) {
+        for(const auto & l : this->_cache) {
             for(const auto & e : l){
                 // if(!e.dirty) std::cout << "R" << e.index << " ";
                 std::cout << "R" << e.index << "<age:" << e.age << ", dirty?" << e.dirty << ">" << " ";
@@ -382,39 +382,39 @@ std::cout << "[Rfc.Replace] Replace Pos = " << pos << std::endl;
     }
 };
 
-// Class RfcArry
-class RfcArry {
+// Class RfcArry_t
+class RfcArry_t {
 private:
-	std::array<std::unique_ptr<Rfc>, 4> __rfc_arry;
+	std::array<std::unique_ptr<Rfc_t>, 4> _rfc_arry;
 public:
-	explicit RfcArry(const std::shared_ptr<GlobalCfg> & cfg_ptr, const std::shared_ptr<Mrf> & mrf_ptr) {
+	explicit RfcArry_t(const std::shared_ptr<GlobalCfg_t> & cfg_ptr, const std::shared_ptr<Mrf_t> & mrf_ptr) {
 		for(size_t i = 0; i < 4; i++) {
-			this->__rfc_arry[i] = std::make_unique<Rfc>(cfg_ptr, mrf_ptr, i);
+			this->_rfc_arry[i] = std::make_unique<Rfc_t>(cfg_ptr, mrf_ptr, i);
 		}
 	}
 
-	void ProcInst(const TraceInst & inst) {
+	void ProcInst(const TraceInst_t & inst) {
 		switch(inst.warp_id % 4) {
 			case(0):
-				this->__rfc_arry[0]->ProcInst(inst);
+				this->_rfc_arry[0]->ProcInst(inst);
 				break;
 			case(1):
-				this->__rfc_arry[1]->ProcInst(inst);
+				this->_rfc_arry[1]->ProcInst(inst);
 				break;
 			case(2):
-				this->__rfc_arry[2]->ProcInst(inst);
+				this->_rfc_arry[2]->ProcInst(inst);
 				break;
 			case(3):
-				this->__rfc_arry[3]->ProcInst(inst);
+				this->_rfc_arry[3]->ProcInst(inst);
 				break;
 			default:
-				throw std::runtime_error("[RfcArry.ProcInst] Runtime error");
+				throw std::runtime_error("[RfcArry_t.ProcInst] Runtime error");
 		}	
 	}		
 	
 	void PPrint() {
-		std::cout << "[RfcArry.PPrint]: " << std::endl;
-		for(auto & block : this->__rfc_arry) {
+		std::cout << "[RfcArry_t.PPrint]: " << std::endl;
+		for(auto & block : this->_rfc_arry) {
 			std::cout << "<Sub-Core " << block->GetCoreId() << "> " << std::endl;
 			block->PPrintRfc();
 		}
@@ -429,7 +429,7 @@ public:
 		unsigned long n_wr_hit = 0;
 		unsigned long n_wr_miss = 0;
 
-		for(const auto & rfcPtr : this->__rfc_arry) {
+		for(const auto & rfcPtr : this->_rfc_arry) {
 			n_rd += rfcPtr->GetAcc(true);
 			n_wr += rfcPtr->GetAcc(false);
 
@@ -444,11 +444,10 @@ public:
 		float n_rd_miss_flt = static_cast<float>(n_rd_miss);
 		float n_wr_miss_flt = static_cast<float>(n_wr_miss);
 
-		std::cout << "[RfcArry.PrintStats] Total # of READ from RFC: " << n_rd << std::endl;
-		std::cout << "[RfcArry.PrintStats] Total # of WRITE to RFC: " << n_wr << std::endl;
-		std::cout << "[RfcArry.PrintStats] RFC READ hit rate: " << n_rd_hit_flt / (n_rd_hit_flt + n_rd_miss_flt) * 100 << "%" << std::endl;
-		std::cout << "[RfcArry.PrintStats] RFC WRITE hit rate: " << n_wr_hit_flt / (n_wr_hit_flt + n_wr_miss_flt) * 100 << "%" <<  std::endl;
+		std::cout << "[RfcArry_t.PrintStats] Total # of READ from RFC: " << n_rd << std::endl;
+		std::cout << "[RfcArry_t.PrintStats] Total # of WRITE to RFC: " << n_wr << std::endl;
+		std::cout << "[RfcArry_t.PrintStats] RFC READ hit rate: " << n_rd_hit_flt / (n_rd_hit_flt + n_rd_miss_flt) * 100 << "%" << std::endl;
+		std::cout << "[RfcArry_t.PrintStats] RFC WRITE hit rate: " << n_wr_hit_flt / (n_wr_hit_flt + n_wr_miss_flt) * 100 << "%" <<  std::endl;
 	}
 };
 
-#endif

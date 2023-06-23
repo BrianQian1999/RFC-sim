@@ -10,45 +10,49 @@
 
 namespace regOps {
 	// register operand type, source/destination
-	enum RegOperandType {
+	enum RegOperandType_e {
 		SRC = 0,
-		DST
+		DST,
+        ADDR // Logically we consider an address as an SRC reg.
 	};
 
     // Just implement the pretty printer with a table...
-    std::string MapRegOperandType2String(RegOperandType regType) {
-        std::unordered_map<RegOperandType, std::string> hashMap = {
-            std::pair<RegOperandType, std::string>(SRC, "R"), // Read
-            std::pair<RegOperandType, std::string>(DST, "W") // Write
+    std::string RegOperandTypeStr(RegOperandType_e regType) {
+        std::unordered_map<RegOperandType_e, std::string> hashMap = {
+            std::pair<RegOperandType_e, std::string>(SRC, "R"), // Read
+            std::pair<RegOperandType_e, std::string>(DST, "W"), // Write
+            std::pair<RegOperandType_e, std::string>(ADDR, "A") // Address
         };
         auto it = hashMap.find(regType);
         if(it == hashMap.end()) {
-            throw std::invalid_argument("[MapRegOperandType2String] Invalid input RegOperandType.");
+            throw std::invalid_argument("[RegOperandTypeStr] Invalid input RegOperandType_e.");
         }
         return it->second;
     }
 
-    std::ostream & operator<<(std::ostream & os, const RegOperandType & regOperandType) {
-        std::cout << MapRegOperandType2String(regOperandType);
+    std::ostream & operator<<(std::ostream & os, const RegOperandType_e & regOperandType) {
+        std::cout << RegOperandTypeStr(regOperandType);
         return os;
     }
 
 	// register operand
-	struct RegOperand {
-        RegOperand() {}
-        RegOperand(RegOperandType type, unsigned index) : 
-            __reg_type(type), __reg_index(index) {}
-		RegOperandType __reg_type; // SRC = 0, DST = 1
-		unsigned __reg_index;
+	struct RegOperand_t {
+        RegOperand_t() {}
+        RegOperand_t(RegOperandType_e type) : regType(type) { regIndex = 0; } // Use this constructor only for ADDR type
+        RegOperand_t(RegOperandType_e type, unsigned index) : regType(type), regIndex(index) {}
 
-        RegOperandType RegType() const { return this->__reg_type; }
-        unsigned RegIndex() const { return this->__reg_index; }  
+		RegOperandType_e regType; // SRC = 0, DST = 1, ADDR = 2
+		unsigned regIndex;
+
+        RegOperandType_e RegType() const { return this->regType; }
+        unsigned RegIndex() const { return this->regIndex; }  
 	};
 
-    std::ostream & operator<<(std::ostream & os, const RegOperand & regOperand) {
-        std::cout << "R" << regOperand.__reg_index << "." << regOperand.__reg_type;
+    std::ostream & operator<<(std::ostream & os, const RegOperand_t & regOperand) {
+        std::cout << "R" << regOperand.regIndex << "." << regOperand.regType;
         return os;
     }
-}
+
+}; // namespace regOps
 
 #endif

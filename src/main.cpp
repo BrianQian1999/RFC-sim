@@ -16,23 +16,28 @@
 #include "mrf.h"
 #include "rfc.h"
 
-#define NDEBUG
+// #define NDEBUG
 #define NMRF // If define NMRF, then skip MRF-only processing
 
 int main(int argc, char ** argv) {
     // Arg Parser
-    if(argc < 5 || std::string(argv[1]) != "-t" || std::string(argv[3]) != "-c") {
-        std::cerr << "Usage: " << argv[0] << " -t <path_to_trace_dir> " << "-c <path_to_config_file>" << std::endl;
+    if(argc < 7 || std::string(argv[1]) != "-t" || std::string(argv[3]) != "-c" || std::string(argv[5]) != "-d") {
+        std::cerr << "Usage: " << argv[0] << " -t <path_to_trace_dir> " 
+                  << "-c <path_to_config_file>" << "-d <path_to_sass_file>" << std::endl;
         return 1;
     }
-    
-    const std::string cfgFile = std::string(argv[4]);
+   
+     
     const std::string traceDir = std::string(argv[2]);
-	
+    const std::string cfgFile = std::string(argv[4]);
+    const std::string sassFile = std::string(argv[6]);
+
 	const std::string traceListFile = traceDir + "/kernelslist.g";
+
 	std::cout << "[main] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 	std::cout << "[main] Kernel list file: " << traceListFile << std::endl;
 	std::cout << "[main] Configuration file: " << cfgFile << std::endl;
+    std::cout << "[main] SASS file: " << sassFile << std::endl;
 
 	// Get traces of all kernels
 	std::ifstream traceListIf(traceListFile);
@@ -48,15 +53,15 @@ int main(int argc, char ** argv) {
 	}
 
     // Initialize global config and config parser
-    std::shared_ptr<GlobalCfg> globalCfgPtr = std::make_shared<GlobalCfg>();
-    std::shared_ptr<CfgParser> cfgParserPtr = std::make_shared<CfgParser>(cfgFile, globalCfgPtr);
+    std::shared_ptr<GlobalCfg_t> globalCfgPtr = std::make_shared<GlobalCfg_t>();
+    std::shared_ptr<CfgParser_t> cfgParserPtr = std::make_shared<CfgParser_t>(cfgFile, globalCfgPtr);
 
 	cfgParserPtr->ParseCfg();
 	cfgParserPtr->PPrintCfg();
 
     // Initialize trace parser and MRF
-    std::shared_ptr<Mrf> mrfPtr = std::make_shared<Mrf>();
-    std::unique_ptr<TraceParser_t> traceParserPtr = std::make_unique<TraceParser_t>(traceList[0]);
+    std::shared_ptr<Mrf_t> mrfPtr = std::make_shared<Mrf_t>();
+    std::unique_ptr<TraceParser_t> traceParserPtr = std::make_unique<TraceParser_t>(traceList[0], sassFile);
 
     /*
      *  Turn off RFC
@@ -94,7 +99,7 @@ int main(int argc, char ** argv) {
     std::cout << "[main] Start parsing..." << std::endl;
 
 	// Initialize RFC array
-	std::unique_ptr<RfcArry> rfcArryPtr = std::make_unique<RfcArry>(globalCfgPtr, mrfPtr);
+	std::unique_ptr<RfcArry_t> rfcArryPtr = std::make_unique<RfcArry_t>(globalCfgPtr, mrfPtr);
 
 	for(auto traceStr : traceList) {
 		traceParserPtr->Reset(traceStr);
