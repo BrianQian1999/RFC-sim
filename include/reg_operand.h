@@ -1,8 +1,9 @@
-// RFC-sim register model
-// Qiran Qian, <qiranq@kth.se>
+/**
+ * RFC-sim register model
+ * author@Qiran Qian, <qiranq@kth.se>
+ **/
 
-#ifndef REG_OPERAND_H
-#define REG_OPERAND_H 
+#pragma once
 
 #include <iostream>
 #include <unordered_map>
@@ -54,5 +55,3 @@ namespace regOps {
     }
 
 }; // namespace regOps
-
-#endif

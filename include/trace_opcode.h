@@ -1,8 +1,9 @@
-// NVIDIA Turing SASS model
-// Qiran Qian, qiranq@kth.se
+/**
+ * NVIDIA Turing SASS model
+ * author@Qiran Qian, qiranq@kth.se
+ **/
 
-#ifndef TRACE_OPCODE_H
-#define TRACE_OPCODE_H
+#pragma once
 
 #include <unordered_map>
 #include <stdexcept>
@@ -531,4 +532,3 @@ InstOpcode MapString2Opcode(std::string str) {
     }
     return it->second;
 }
-#endif

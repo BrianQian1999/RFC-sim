@@ -1,5 +1,4 @@
-#ifndef REUSE_INFO_H
-#define REUSE_INFO_H
+#pragma once
 
 #include <iostream>
 #include <fstream>
@@ -100,4 +99,3 @@ struct ReuseInfo_t {
 	}
 };
 
-#endif

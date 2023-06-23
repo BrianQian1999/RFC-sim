@@ -1,8 +1,9 @@
-// Turing SASS trace parser, stdin -> struct TraceInst_tr
-// Qiran Qian, <qiranq@kth.se>
+/**
+ * Turing SASS trace parser, stdin -> struct TraceInst_tr
+ * author@ Qiran Qian, <qiranq@kth.se>
+ **/
 
-#ifndef TRACE_PARSER_H
-#define TRACE_PARSER_H
+#pragma once
 
 #include <string>
 #include <iostream>
@@ -341,4 +342,3 @@ public:
     }
 };
 
-#endif

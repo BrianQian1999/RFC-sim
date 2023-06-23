@@ -1,5 +1,8 @@
-// Register File Cache (RFC) for NVIDIA GPGPU
-// Qiran Qian, <qiranq@kth.se>
+/**
+ * Register File Cache (RFC) for NVIDIA GPGPU
+ * author@Qiran Qian, <qiranq@kth.se>
+ **/
+
 
 #pragma once
 
@@ -57,12 +60,14 @@ struct RfcStats_t {
 
 	float GetRdHitRate() {
 		float numHit = static_cast<float>(this->rfcNumRdHit);
-		float numTot = static_cast<float>(this->rfcNumRdHit + this->rfcNumRdMiss); 
+		float numTot = static_cast<float>(this->rfcNumRdHit + this->rfcNumRdMiss);
+        return (numHit / numTot); 
 	}
 
 	float GetWrHitRate() {
 		float numHit = static_cast<float>(this->rfcNumWrHit);
-		float numTot = static_cast<float>(this->rfcNumWrHit + this->rfcNumWrMiss); 
+		float numTot = static_cast<float>(this->rfcNumWrHit + this->rfcNumWrMiss);
+        return (numHit / numTot); 
 	}
 
 	void PPrint() {

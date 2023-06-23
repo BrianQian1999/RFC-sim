@@ -1,11 +1,13 @@
-// Turing SASS trace instruction model
-// Qiran Qian, <qiranq@kth.se>
+/** 
+ * Turing SASS trace instruction model
+ * author@Qiran Qian, <qiranq@kth.se>
+ **/
 
-#ifndef TRACE_INST_H
-#define TRACE_INST_H
+#pragma once
 
 #include <iostream>
 #include <vector>
+#include <bitset>
 
 #include "utils.h"
 #include "trace_opcode.h"
@@ -45,5 +47,3 @@ std::ostream & operator<<(std::ostream & os, const TraceInst_t & traceInst) {
 	}
     return os;
 }
-
-#endif

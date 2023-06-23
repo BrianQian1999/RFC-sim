@@ -1,9 +1,9 @@
-// Some useful utilities for the RFC-sim model
-// Qiran Qian, qiranq@kth.se
+/**
+ * Utilities for RFC-sim model
+ * author@Qiran Qian, qiranq@kth.se
+ **/
 
-#ifndef UTILS_H
-#define UTILS_H
-
+#pragma once
 #include <iostream>
 
 namespace utils {
@@ -29,4 +29,3 @@ namespace utils {
 	}
 };
 
-#endif
