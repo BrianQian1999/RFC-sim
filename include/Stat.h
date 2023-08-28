@@ -24,7 +24,7 @@ namespace stat {
     
     struct RfcStat {
         cfg::EngyMdl engyMdl;
-        explicit RfcStat(const cfg::EngyMdl & engyMdl) : engyMdl(engyMdl) {}
+        explicit RfcStat(const cfg::EngyMdl&);
 
         uint64_t mrfRdNum;
         uint64_t mrfWrNum;
