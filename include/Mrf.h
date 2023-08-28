@@ -7,6 +7,7 @@ class Mrf {
 private:
     std::shared_ptr<stat::RfcStat> stat;
     std::shared_ptr<stat::InstStat> iStat;
+    std::bitset<32> mask;
 public:
     explicit Mrf(
         const std::shared_ptr<stat::RfcStat> & stat, 
