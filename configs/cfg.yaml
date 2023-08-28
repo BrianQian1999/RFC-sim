@@ -1,0 +1,16 @@
+#alloc <full-comp=0, read-alloc=1, write-alloc=2>
+#repl <lru=0, fifo=1>
+#evict <write-back=0, write-through=1>
+
+arch: 0
+assoc: 8
+policy: 
+  - alloc: 1
+  - repl: 1
+  - evict: 1
+energy_model:
+  - rfc.r: 3.4
+  - rfc.w: 10.9
+  - mrf.r: 8
+  - mrf.w: 11.0 
+
