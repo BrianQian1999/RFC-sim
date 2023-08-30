@@ -20,7 +20,7 @@ namespace cfg {
             cfg->allocPlcy = static_cast<AllocPlcy>(yamlNode["policy"][0]["alloc"].as<int>());
             cfg->replPlcy = static_cast<ReplPlcy>(yamlNode["policy"][1]["repl"].as<int>());
             cfg->evictPlcy = static_cast<EvictPlcy>(yamlNode["policy"][2]["evict"].as<int>());
-
+            cfg->assoc = yamlNode["associativity"].as<int>();
             cfg->engyMdl.rfcRdEngy = yamlNode["energy_model"][0]["rfc.r"].as<float>();
             cfg->engyMdl.rfcWrEngy = yamlNode["energy_model"][1]["rfc.w"].as<float>();
             cfg->engyMdl.mrfRdEngy = yamlNode["energy_model"][2]["mrf.r"].as<float>();
@@ -28,20 +28,9 @@ namespace cfg {
         } catch (std::exception & e) {
             std::cerr << "yaml parsing error: " << e.what() << std::endl;
         }
-        switch(cfg->allocPlcy) {
-            case(AllocPlcy::fullCplAlloc):
-                cfg->assoc = 2;
-                break;
-            case(AllocPlcy::readAlloc):
-                cfg->assoc = 8;
-                break;
-            case(AllocPlcy::writeAlloc):
-                cfg->assoc = 8;
-                break;
-            default:
-                cfg->assoc = 8;
-                break;
-        }
+
+        if (cfg->allocPlcy == AllocPlcy::fullCplAlloc && cfg->assoc != 2) 
+            throw std::invalid_argument("Invalid input: fullCplAlloc must have 2-way assoc cache.\n");
     } 
 
     void CfgParser::print() const {

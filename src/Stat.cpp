@@ -63,4 +63,5 @@ namespace stat {
                   << (mrfOnlyStat.calcRfEngy() - rfcStat.calcRfEngy()) 
                         / mrfOnlyStat.calcRfEngy() * 100 << "\%\n";
     }
+
 };

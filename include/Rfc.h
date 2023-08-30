@@ -34,7 +34,7 @@ struct Cam {
 
 	void flush() noexcept;
 	void aging() noexcept;
-	std::pair<bool, uint32_t> search(uint32_t addr) noexcept;
+	std::pair<bool, uint32_t> search(uint32_t, uint32_t) noexcept;
 };
 
 inline std::ostream & operator<<(std::ostream &, const Cam&);
@@ -55,9 +55,8 @@ public:
 		const std::shared_ptr<Mrf>&
 	);
 
-	std::pair<bool, uint32_t> search(const reg::RegOprd&);
+	std::pair<bool, uint32_t> search(const reg::RegOprd&, uint32_t);
 	void aging() noexcept;
-	uint32_t cnt() noexcept;
 
 	void exec(const TraceInst&);
 	void evict() noexcept;
@@ -70,5 +69,6 @@ public:
 	void fullCplAlloc(const reg::RegOprd&);
 	void readAlloc(const reg::RegOprd&);
 	void writeAlloc(const reg::RegOprd&);
+	void writeOnlyAlloc(const reg::RegOprd&);
 	friend std::ostream & operator<<(std::ostream&, const Rfc&);
 };

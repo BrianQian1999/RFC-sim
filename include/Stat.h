@@ -71,4 +71,5 @@ namespace stat {
 
         return os;
     }
+
 }; /*namespace stat*/

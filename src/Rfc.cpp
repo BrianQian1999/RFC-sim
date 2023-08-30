@@ -51,14 +51,16 @@ void Cam::aging() noexcept {
         e.aging();
 }
 
-std::pair<bool, uint32_t> Cam::search(uint32_t addr) noexcept {
-    uint32_t idx = 0;
-    for (const auto & e : mem) {
+std::pair<bool, uint32_t> Cam::search(uint32_t addr, uint32_t setId) noexcept {
+    uint32_t startIdx = 8 / assoc * setId;
+    uint32_t endIdx = startIdx + assoc;
+    
+    for (auto i = startIdx; i < endIdx; i++) {
+        const auto & e = mem.at(i);
         if (e.tag == addr)
-            return std::make_pair<bool, uint32_t>(true, std::move(idx));
-        idx++;
+            return std::make_pair<bool, uint32_t>(true, std::move(i));
     }    
-    return std::make_pair<bool, uint32_t>(false, std::move(idx));
+    return std::make_pair<bool, uint32_t>(false, std::move(endIdx));
 }
 
 // ============================================== RFC ===============================
@@ -72,18 +74,8 @@ void Rfc::aging() noexcept {
     cam->aging();
 }
 
-std::pair<bool, uint32_t> Rfc::search(const reg::RegOprd & oprd) {
-    return cam->search(oprd.regIndex);
-}
-
-uint32_t Rfc::cnt() noexcept {
-    uint32_t acc = 0;
-    for (auto i = 0; i < 32; i += 4) {
-        std::bitset<4> r = std::bitset<4>(mask.to_string().substr(i, 4));
-        if (r.any())
-            acc++;
-    }
-    return acc; 
+std::pair<bool, uint32_t> Rfc::search(const reg::RegOprd & oprd, uint32_t setId) {
+    return cam->search(oprd.regIndex, setId);
 }
 
 void Rfc::exec(const TraceInst & inst) {
@@ -94,7 +86,7 @@ void Rfc::exec(const TraceInst & inst) {
         auto & tp = oprd.regType;
         if (tp == reg::RegOprdT::ADDR) continue;
         
-        auto sp = search(oprd);
+        auto sp = search(oprd, oprd.regPos % (8 / cam->assoc));
         if (!sp.first) { // cache miss
             scb->accMiss(tp == reg::RegOprdT::SRC);
             allocWrapper(oprd);
@@ -102,12 +94,12 @@ void Rfc::exec(const TraceInst & inst) {
         else { // cache hit
             if (tp == reg::RegOprdT::SRC) {
                 scb->accHit(true);
-                scb->rfcRdNum += cnt();
+                scb->rfcRdNum += mask.count();
                 cam->mem.at(sp.second).set(cam->mem.at(sp.second).tag, 1, cam->mem.at(sp.second).fifoAge, false);
             }
             else if (tp == reg::RegOprdT::DST) {
                 scb->accHit(false);
-                scb->rfcWrNum += cnt();
+                scb->rfcWrNum += mask.count();
                 cam->mem.at(sp.second).set(cam->mem.at(sp.second).tag, 1, 1, true);
             }
         }
@@ -186,10 +178,10 @@ void Rfc::fullCplAlloc(const reg::RegOprd & oprd) {
     } 
     else if (oprd.regType == reg::RegOprdT::SRC) {
         if (flags[oprd.regPos]) {
-            auto p = replWrapper(oprd.regPos % 4);
+            auto p = replWrapper(oprd.regPos % (8 / cam->assoc));
             cam->mem.at(p.second).set(oprd.regIndex, 1, 1, false);
         
-            scb->rfcWrNum += cnt();
+            scb->rfcWrNum += mask.count();
             scb->mrfRdNum += mask.count();
 
             if (p.first) evict(); 
@@ -203,11 +195,11 @@ void Rfc::fullCplAlloc(const reg::RegOprd & oprd) {
 
 void Rfc::readAlloc(const reg::RegOprd & oprd) {
     if (oprd.regType == reg::RegOprdT::SRC) {
-        auto p = replWrapper(0); // full-associate
+        auto p = replWrapper(oprd.regPos % (8 / cam->assoc)); // full-associate
         cam->mem.at(p.second).set(oprd.regIndex, 1, 1, false);
 
         // read from mrf, write to rfc
-        scb->rfcWrNum += cnt();
+        scb->rfcWrNum += mask.count();
         scb->mrfRdNum += mask.count();
 
         if (p.first) evict();
@@ -219,10 +211,10 @@ void Rfc::readAlloc(const reg::RegOprd & oprd) {
 
 void Rfc::writeAlloc(const reg::RegOprd & oprd) {
     if (oprd.regType == reg::RegOprdT::SRC) {
-        auto p = replWrapper(0);
+        auto p = replWrapper(oprd.regPos % (8 / cam->assoc));
         cam->mem.at(p.second).set(oprd.regIndex, 1, 1, false);
         
-        scb->rfcWrNum += cnt();
+        scb->rfcWrNum += mask.count();
         scb->mrfRdNum += mask.count();        
     
         if (p.first) evict();
@@ -232,6 +224,22 @@ void Rfc::writeAlloc(const reg::RegOprd & oprd) {
         cam->mem.at(p.second).set(oprd.regIndex, 1, 1, true);
         scb->rfcWrNum += mask.count();
         if (p.first) evict();
+    }
+}
+
+void Rfc::writeOnlyAlloc(const reg::RegOprd & oprd) {
+    if (oprd.regType == reg::RegOprdT::DST) {
+        auto p = replWrapper(oprd.regPos % (8 / cam->assoc)); // full-associate
+        cam->mem.at(p.second).set(oprd.regIndex, 1, 1, false);
+
+        // read from mrf, write to rfc
+        scb->rfcWrNum += mask.count();
+        scb->mrfRdNum += mask.count();
+
+        if (p.first) evict();
+    } 
+    else if (oprd.regType == reg::RegOprdT::SRC) {
+        scb->mrfRdNum += mask.count();
     }
 }
 
