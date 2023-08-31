@@ -47,28 +47,35 @@ void AsmParser::parse() {
 
 			std::getline(*asmIfs, line_s);
 			toks.clear();
+			toks.resize(0);
+
 			ss = std::stringstream(line_s);
 			while(std::getline(ss, tok, ' '))
 				toks.push_back(tok);
 
-                if(std::regex_search(toks[toks.size() - 2], matches, inst2nd_regex)) {
+            if(std::regex_search(toks[toks.size() - 2], matches, inst2nd_regex)) {
+				std::cout << matches[0].str() << std::endl;
 				flag_s = matches[0].str().substr(2, 2); // e.g., for a 0x080fe2..., extract 08
-                    
+				
 				uint32_t flag_ui;
 				std::stringstream flag_ss(flag_s);
 				flag_ss >> std::hex >> flag_ui;
+			
 				std::bitset<8> ctrl_flags(flag_ui);
                 std::bitset<4> flags(ctrl_flags.to_string().substr(2, 4));
+				std::cout << flag_ui << " " << ctrl_flags << " " << ctrl_flags.to_string() << " " << flags << std::endl;
 	   			
-				auto f0 = flags[0];
-				auto f1 = flags[1];
-				auto f2 = flags[2];
-				auto f3 = flags[3];
+				bool f0 = flags.test(0);
+				bool f1 = flags.test(1);
+				bool f2 = flags.test(2);
+				bool f3 = flags.test(3);
 
-				flags[0] = f3;
-				flags[1] = f2;
-				flags[2] = f1;
-				flags[3] = f0;
+				flags.set(0, f3);
+				flags.set(1, f2);
+				flags.set(2, f1);
+				flags.set(3, f0);
+				
+				std::cout << flag_ui << " " << ctrl_flags << " " << ctrl_flags.to_string() << " " << flags << std::endl;
 
 				(*reuseInfoTab).insert(std::make_pair(pc, flags));
 			}
