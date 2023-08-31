@@ -21,7 +21,7 @@ int main(int argc, char ** argv) {
     // Arg Parser
     if(argc < 7 || std::string(argv[1]) != "-t" || std::string(argv[3]) != "-c" || std::string(argv[5]) != "-d") {
         std::cerr << "Usage: " << argv[0] << " -t <path_to_trace_dir> " 
-                  << "-c <path_to_config_file> " << "-d <path_to_sass_file>" << std::endl;
+                  << "-c <path_to_config_file> " << "-d <path_to_asm_file>" << std::endl;
         return 1;
     }
    
@@ -76,7 +76,7 @@ int main(int argc, char ** argv) {
     
 	for(auto & traceFile : traceList) {
 		traceParser->reset(traceFile);
-		std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
+		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
 			if (inst.opcode == op::OP_VOID) break;
@@ -126,7 +126,9 @@ int main(int argc, char ** argv) {
 
 	std::cout << std::endl << std::endl;
 	std::cout << "| ================================ Statistics ======================================" << std::endl;
-	std::cout << std::endl;
+    std::cout << "Workload: " << traceDir << std::endl;
+    std::cout << "Config: " << *cfg << std::endl;
+    std::cout << std::endl;
 	std::cout << " >----------------------------- Workload Stats ----------------------------<" << std::endl;
 	std::cout << iStatSwp << std::endl;
 	std::cout << " >----------------------------- MRF only ----------------------------<" << std::endl;
