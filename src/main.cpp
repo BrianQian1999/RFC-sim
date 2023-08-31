@@ -101,7 +101,7 @@ int main(int argc, char ** argv) {
 
 	for(auto traceFile : traceList) {
 		traceParser->reset(traceFile);
-		std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
+		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
     	
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
