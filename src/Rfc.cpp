@@ -180,7 +180,7 @@ void Rfc::fullCplAlloc(const reg::RegOprd & oprd) {
     } 
     else if (oprd.regType == reg::RegOprdT::SRC) {
         if (flags.test(oprd.regPos)) {
-            auto p = replWrapper(oprd.regPos);
+            auto p = replWrapper(oprd.regPos % (8 / cam->assoc));
             cam->mem.at(p.second).set(oprd.regIndex, 1, 1, false);
         
             scb->rfcWrNum += mask.count();
