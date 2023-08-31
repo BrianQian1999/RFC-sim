@@ -1,7 +1,7 @@
 #include "Rfc.h"
 
 RfcEntry::RfcEntry() {
-    tag = 0;
+    tag = 256;
     lruAge = 0;
     fifoAge = 0;
     isDirty = 0;
@@ -13,7 +13,7 @@ std::ostream & operator<<(std::ostream & os, const RfcEntry & e) {
 }
 
 void RfcEntry::clear() noexcept {
-    tag = 0;
+    tag = 256;
     lruAge = 0;
     fifoAge = 0;
     isDirty = true;
@@ -129,7 +129,7 @@ std::pair<bool, uint32_t> Rfc::lruRepl(uint32_t setId) noexcept {
     uint32_t maxPos = 0;
 
     for (auto i = start; i < end; i++) {
-        if (cam->mem.at(i).tag == 0) // if empty
+        if (cam->mem.at(i).tag == 256) // if empty
             return std::make_pair<bool, uint32_t>(false, std::move(i));
         if (cam->mem.at(i).lruAge > maxAge) {
             maxAge = cam->mem.at(i).lruAge;
@@ -148,7 +148,7 @@ std::pair<bool, uint32_t> Rfc::fifoRepl(uint32_t setId) noexcept {
     uint32_t maxPos = 0;
 
     for (auto i = start; i < end; i++) {
-        if (cam->mem.at(i).tag == 0) // if empty
+        if (cam->mem.at(i).tag == 256) // if empty
             return std::make_pair<bool, uint32_t>(false, std::move(i));
         if (cam->mem.at(i).fifoAge > maxAge) {
             maxAge = cam->mem.at(i).fifoAge;
