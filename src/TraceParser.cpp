@@ -86,17 +86,18 @@ void TraceParser::extendHmmaRegs(std::vector<reg::RegOprd> & regs) const {
     
     matAReg.regPos = 0;
     regs.push_back(matAReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 1));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 0));
 
-    matBReg.regPos = 2;
+    matBReg.regPos = 1;
     regs.push_back(matBReg);
     
-    matCReg.regPos = 3;
+    matCReg.regPos = 2;
     regs.push_back(matCReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 4));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 5));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 6));
-    
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 2));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 2));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 2));
+
+    matDReg.regPos = 0; 
     regs.push_back(matDReg);
     regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 1, 0));
     regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 2, 0));
@@ -115,17 +116,18 @@ void TraceParser::extendImmaRegs(std::vector<reg::RegOprd> & regs) const {
     
     matAReg.regPos = 0;
     regs.push_back(matAReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 1));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 0));
 
-    matBReg.regPos = 2;
+    matBReg.regPos = 1;
     regs.push_back(matBReg);
     
-    matCReg.regPos = 3;
+    matCReg.regPos = 2;
     regs.push_back(matCReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 4));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 5));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 6));
-    
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 2));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 2));
+    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 2));
+
+    matDReg.regPos = 0; // DST 
     regs.push_back(matDReg);
     regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 1, 0));
     regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 2, 0));
