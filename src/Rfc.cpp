@@ -52,7 +52,7 @@ void Cam::aging() noexcept {
 }
 
 std::pair<bool, uint32_t> Cam::search(uint32_t addr, uint32_t setId) noexcept {
-    uint32_t startIdx = 8 / assoc * setId;
+    uint32_t startIdx = setId * assoc;
     uint32_t endIdx = startIdx + assoc;
     
     for (auto i = startIdx; i < endIdx; i++) {
@@ -123,7 +123,7 @@ std::pair<bool, uint32_t> Rfc::replWrapper(uint32_t setId) noexcept {
 }
 
 std::pair<bool, uint32_t> Rfc::lruRepl(uint32_t setId) noexcept {
-    uint32_t start = setId / cam->assoc;
+    uint32_t start = setId * cam->assoc;
     uint32_t end = start + cam->assoc;
     uint32_t maxAge = 0;
     uint32_t maxPos = 0;
@@ -142,7 +142,7 @@ std::pair<bool, uint32_t> Rfc::lruRepl(uint32_t setId) noexcept {
 }
 
 std::pair<bool, uint32_t> Rfc::fifoRepl(uint32_t setId) noexcept {
-    uint32_t start = setId / cam->assoc;
+    uint32_t start = setId * cam->assoc;
     uint32_t end = start + cam->assoc;
     uint32_t maxAge = 0;
     uint32_t maxPos = 0;
