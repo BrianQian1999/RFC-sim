@@ -167,6 +167,8 @@ void Rfc::allocWrapper(const reg::RegOprd & oprd) {
         return readAlloc(oprd);
     case(cfg::AllocPlcy::writeAlloc):
         return writeAlloc(oprd);
+    case(cfg::AllocPlcy::writeOnlyAlloc):
+        return writeOnlyAlloc(oprd);
     default:
         return fullCplAlloc(oprd);
     }

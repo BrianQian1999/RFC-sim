@@ -24,6 +24,7 @@ namespace cfg {
         fullCplAlloc = 0,
         readAlloc,
         writeAlloc,
+        writeOnlyAlloc,
 		customAlloc
     };
 
@@ -58,6 +59,7 @@ namespace cfg {
         std::pair<AllocPlcy, std::string>(AllocPlcy::fullCplAlloc, "fullCplAlloc"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "readAlloc"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "writeAlloc"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::writeOnlyAlloc, "writeOnlyAlloc"),
 		std::pair<AllocPlcy, std::string>(AllocPlcy::customAlloc, "customAlloc")
     };
 
