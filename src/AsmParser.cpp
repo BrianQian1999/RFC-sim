@@ -54,7 +54,6 @@ void AsmParser::parse() {
 				toks.push_back(tok);
 
             if(std::regex_search(toks[toks.size() - 2], matches, inst2nd_regex)) {
-				std::cout << matches[0].str() << std::endl;
 				flag_s = matches[0].str().substr(2, 2); // e.g., for a 0x080fe2..., extract 08
 				
 				uint32_t flag_ui;
@@ -63,7 +62,6 @@ void AsmParser::parse() {
 			
 				std::bitset<8> ctrl_flags(flag_ui);
                 std::bitset<4> flags(ctrl_flags.to_string().substr(2, 4));
-				std::cout << flag_ui << " " << ctrl_flags << " " << ctrl_flags.to_string() << " " << flags << std::endl;
 	   			
 				bool f0 = flags.test(0);
 				bool f1 = flags.test(1);
@@ -75,9 +73,7 @@ void AsmParser::parse() {
 				flags.set(2, f1);
 				flags.set(3, f0);
 				
-				std::cout << flag_ui << " " << ctrl_flags << " " << ctrl_flags.to_string() << " " << flags << std::endl;
-
-				(*reuseInfoTab).insert(std::make_pair(pc, flags));
+                (*reuseInfoTab).insert(std::make_pair(pc, flags));
 			}
 			else 
 				throw std::runtime_error("Runtime error: failed to parse asm file.\n");
