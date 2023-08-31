@@ -42,9 +42,9 @@ namespace cfg {
 
     // Arch -> std::string
     inline const std::unordered_map<Arch, std::string> arch2StrTab {
-        std::pair<Arch, std::string>(Arch::sm70, "sm70 (Volta)"),
-        std::pair<Arch, std::string>(Arch::sm75, "sm75 (Turing)"),
-        std::pair<Arch, std::string>(Arch::sm80, "sm80 (Ampere)")
+        std::pair<Arch, std::string>(Arch::sm70, "sm70"),
+        std::pair<Arch, std::string>(Arch::sm75, "sm75"),
+        std::pair<Arch, std::string>(Arch::sm80, "sm80")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const Arch & arch) {
@@ -56,11 +56,11 @@ namespace cfg {
     }
 
     inline const std::unordered_map<AllocPlcy, std::string> alloc2StrTab {
-        std::pair<AllocPlcy, std::string>(AllocPlcy::fullCplAlloc, "fullCplAlloc"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "readAlloc"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "writeAlloc"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::writeOnlyAlloc, "writeOnlyAlloc"),
-		std::pair<AllocPlcy, std::string>(AllocPlcy::customAlloc, "customAlloc")
+        std::pair<AllocPlcy, std::string>(AllocPlcy::fullCplAlloc, "fullCpl"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::writeOnlyAlloc, "writeOnly"),
+		std::pair<AllocPlcy, std::string>(AllocPlcy::customAlloc, "custom")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const AllocPlcy & plcy) {
@@ -72,8 +72,8 @@ namespace cfg {
     }
 
 	inline const std::unordered_map<ReplPlcy, std::string> repl2StrTab {
-		std::pair<ReplPlcy, std::string>(ReplPlcy::lru, "lru"),
-		std::pair<ReplPlcy, std::string>(ReplPlcy::fifo, "fifo")
+		std::pair<ReplPlcy, std::string>(ReplPlcy::lru, "LRU"),
+		std::pair<ReplPlcy, std::string>(ReplPlcy::fifo, "FIFO")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const ReplPlcy & plcy) {

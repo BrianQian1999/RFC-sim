@@ -14,20 +14,24 @@
 
 #include "TraceParser.h"
 #include "Rfc.h"
+#include "Logger.h"
 
 #define NDEBUG
 
 int main(int argc, char ** argv) {
-    // Arg Parser
-    if(argc < 7 || std::string(argv[1]) != "-t" || std::string(argv[3]) != "-c" || std::string(argv[5]) != "-d") {
+    
+	if(argc < 7 || std::string(argv[1]) != "-t" || std::string(argv[3]) != "-c" || std::string(argv[5]) != "-d") {
         std::cerr << "Usage: " << argv[0] << " -t <path_to_trace_dir> " 
-                  << "-c <path_to_config_file> " << "-d <path_to_asm_file>" << std::endl;
+                  << "-c <path_to_config_file> " 
+				  << "-d <path_to_asm_file>" 
+				  << "-o <path_to_log_file>\n";
         return 1;
     }
    
     const std::string traceDir = std::string(argv[2]);
     const std::string cfgFile = std::string(argv[4]);
     const std::string asmFile = std::string(argv[6]);
+	const std::string logFile = std::string(argv[8]);
 
 	const std::string traceListFile = traceDir + "/kernelslist.g";
 
@@ -137,6 +141,10 @@ int main(int argc, char ** argv) {
 	std::cout << *stat << std::endl;
 	std::cout << " >----------------------------- Comparison --------------------------<" << std::endl;
 	stat::RfcStat::printCmp(statSwp, *stat);
+
+	std::ofstream of(logFile);
+	Logger::logging(of, *cfg, *iStat, statSwp, *stat);
+	of.close();
 
 	return 0;
 }
