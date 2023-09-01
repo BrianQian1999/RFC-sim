@@ -142,9 +142,11 @@ int main(int argc, char ** argv) {
 	std::cout << " >----------------------------- Comparison --------------------------<" << std::endl;
 	stat::RfcStat::printCmp(statSwp, *stat);
 
-	std::ofstream of(logFile);
-	Logger::logging(of, *cfg, *iStat, statSwp, *stat);
-	of.close();
+	std::ofstream of(logFile, std::ios::app);
+	if (of.is_open()) {
+		Logger::logging(of, *cfg, *iStat, statSwp, *stat);
+		of.close();
+	}
 
 	return 0;
 }
