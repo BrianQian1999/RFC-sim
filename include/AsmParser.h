@@ -13,11 +13,12 @@
 #include <iomanip>
 
 struct AsmParser {
+	using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
 	std::shared_ptr<std::ifstream> asmIfs;
-	std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>> reuseInfoTab;
+	std::shared_ptr<std::vector<mapT>> tab;
 
 	AsmParser();
-    AsmParser(const std::string & asmFile, std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>> tab);
+    AsmParser(const std::string&, const std::shared_ptr<std::vector<mapT>>&);
 	
 	void parse();
 };

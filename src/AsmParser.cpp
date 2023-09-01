@@ -4,8 +4,8 @@ AsmParser::AsmParser() {}
 
 AsmParser::AsmParser(
     	const std::string & asmFile,
-    	std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>> tab
-    ) : reuseInfoTab(tab) {
+    	const std::shared_ptr<std::vector<mapT>>& tab
+    ) : tab(tab) {
     asmIfs = std::make_shared<std::ifstream>(asmFile);
 }
 
@@ -13,6 +13,7 @@ void AsmParser::parse() {
 	if (!asmIfs->is_open())
 		return;
 
+	int idx = -1;
     while(!asmIfs->eof()) {
 		std::string line_s;
 		std::getline(*asmIfs, line_s);
@@ -45,6 +46,9 @@ void AsmParser::parse() {
 				std::cerr << e.what() << std::endl;
 			}
 
+			if (pc == 0)
+				idx++;
+
 			std::getline(*asmIfs, line_s);
 			toks.clear();
 			toks.resize(0);
@@ -73,7 +77,7 @@ void AsmParser::parse() {
 				flags.set(2, f1);
 				flags.set(3, f0);
 				
-                (*reuseInfoTab).insert(std::make_pair(pc, flags));
+                (tab->at(idx)).insert(std::make_pair(pc, flags));
 			}
 			else 
 				throw std::runtime_error("Runtime error: failed to parse asm file.\n");

@@ -2,7 +2,7 @@
 
 TraceParser::TraceParser(
     const std::string & traceFile,
-    const std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>> & reuseInfo
+    const std::shared_ptr<mapT> & reuseInfo
 ) : traceIfs(std::ifstream(traceFile)), reuseInfo(reuseInfo) {
     if (!traceIfs.is_open()) {
         throw std::runtime_error("Runtime error: failed to open trace file.\n");
@@ -13,8 +13,9 @@ bool TraceParser::eof() const {
     return traceIfs.eof();
 }
 
-void TraceParser::reset(const std::string & s) {
+void TraceParser::reset(const std::string & s, const std::shared_ptr<mapT>& tab) {
     traceIfs = std::ifstream(s);
+    reuseInfo = tab;
 }
 
 bool TraceParser::isRegOprd(const std::string & tok) const {

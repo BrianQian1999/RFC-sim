@@ -61,10 +61,14 @@ int main(int argc, char ** argv) {
 	cfgParser->print();
 
 	using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
-	std::shared_ptr<mapT> tab = std::make_shared<mapT>();
+	std::vector<mapT> vtab;
+	vtab.resize(traceList.size());
+	
+	std::shared_ptr<std::vector<mapT>> tab = std::make_shared<std::vector<mapT>>(vtab);
 	std::unique_ptr<AsmParser> asmParser = std::make_unique<AsmParser>(asmFile, tab);
 	asmParser->parse();
-    std::unique_ptr<TraceParser> traceParser = std::make_unique<TraceParser>(traceList[0], tab);
+
+    std::unique_ptr<TraceParser> traceParser = std::make_unique<TraceParser>(traceList.at(0), std::make_shared<mapT>(tab->at(0)));
 
 	// statistics
 	auto engyMdl = cfg->engyMdl;
@@ -76,16 +80,16 @@ int main(int argc, char ** argv) {
 
 	// Run
     std::cout << "[RFC-sim] MRF only..." << std::endl;
-    std::cout << "[RFC-sim] Start parsing..." << std::endl;
-    
+	size_t idx = 0;
 	for(auto & traceFile : traceList) {
-		traceParser->reset(traceFile);
+		traceParser->reset(traceFile, std::make_shared<mapT>(tab->at(idx)));
 		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
 			if (inst.opcode == op::OP_VOID) break;
 			mrf->exec(inst);
 		}
+		idx++;
 	}
 
 	auto iStatSwp = *iStat;
@@ -97,16 +101,14 @@ int main(int argc, char ** argv) {
 	// RFC
 	std::cout << std::endl;
     std::cout << "[RFC-sim] Turn on RFC..." << std::endl;
-    std::cout << "[RFC-sim] Start parsing..." << std::endl;
 
 	std::vector<Rfc> rfcArry;
 	for (auto i = 0; i < 32; i++)
 		rfcArry.push_back(Rfc(cfg, stat, mrf));
 
-	for(auto traceFile : traceList) {
-		traceParser->reset(traceFile);
-		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
-    	
+	idx = 0;
+	for(auto & traceFile : traceList) {
+		traceParser->reset(traceFile, std::make_shared<mapT>(tab->at(idx)));	
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
           
@@ -126,6 +128,7 @@ int main(int argc, char ** argv) {
 				std::cerr << e.what() << std::endl;
 			}
 		}
+		idx++;
 	}
 
 	std::cout << std::endl << std::endl;

@@ -32,17 +32,18 @@ inline std::ostream & operator<< (std::ostream & os, const KernelInfo & info) {
 
 class TraceParser {
 private:
+    using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
     std::ifstream traceIfs;
 	KernelInfo kernelInfo;
-    std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>> reuseInfo;
+    std::shared_ptr<mapT> reuseInfo;
     util::Dim3<int> blockId;
     unsigned wId; 
 
 public:
-	explicit TraceParser(const std::string &, const std::shared_ptr<std::unordered_map<uint32_t, std::bitset<4>>>&);
+	explicit TraceParser(const std::string &, const std::shared_ptr<mapT>&);
  
     bool eof() const;
-    void reset(const std::string&);
+    void reset(const std::string&, const std::shared_ptr<mapT>&);
     bool isRegOprd(const std::string&) const;
     bool IsAddrOprd(const std::string&) const;
     reg::RegOprd parseReg(const std::string&, reg::RegOprdT, uint32_t) const;
