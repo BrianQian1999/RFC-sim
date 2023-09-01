@@ -123,7 +123,9 @@ int main(int argc, char ** argv) {
 
 			try {
 				rfcArry[inst.wId % 32].exec(inst);
-				// std::cout << rfcArry.at(inst.wId % 32) << std::endl;
+				#ifndef NDEBUG
+				std::cout << rfcArry.at(inst.wId % 32) << std::endl;
+				#endif
 			} catch (std::exception & e) {
 				std::cerr << e.what() << std::endl;
 			}

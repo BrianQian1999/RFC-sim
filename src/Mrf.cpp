@@ -16,6 +16,7 @@ void Mrf::exec(const TraceInst & inst) {
     iStat->mmaInstNum += (uint64_t) (inst.opcode==op::OP_HMMA || inst.opcode==op::OP_IMMA || inst.opcode==op::OP_BMMA);
    
     for(const auto & reg : inst.regPool) {
-        req(reg.regType == reg::RegOprdT::SRC);
+        if (reg.regType == reg::RegOprdT::ADDR) return;
+		req(reg.regType == reg::RegOprdT::SRC);
     }
 }
