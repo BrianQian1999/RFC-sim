@@ -2,8 +2,9 @@
 
 TraceParser::TraceParser(
     const std::string & traceFile,
-    const std::shared_ptr<mapT> & reuseInfo
-) : traceIfs(std::ifstream(traceFile)), reuseInfo(reuseInfo) {
+    const std::shared_ptr<std::vector<mapT>> & reuseInfo,
+    const std::shared_ptr<std::unordered_map<std::string, size_t>>& map
+) : traceIfs(std::ifstream(traceFile)), reuseInfo(reuseInfo), map(map) {
     if (!traceIfs.is_open()) {
         throw std::runtime_error("Runtime error: failed to open trace file.\n");
     }
@@ -13,12 +14,11 @@ bool TraceParser::eof() const {
     return traceIfs.eof();
 }
 
-void TraceParser::reset(const std::string & s, const std::shared_ptr<mapT>& tab) {
+void TraceParser::reset(const std::string & s) {
     traceIfs = std::ifstream(s);
-    reuseInfo = tab;
 }
 
-bool TraceParser::isRegOprd(const std::string & tok) const {
+bool TraceParser::isOprd(const std::string & tok) const {
     if (tok.size() < 2 || tok[0] != 'R') 
         return false;
         
@@ -35,14 +35,14 @@ bool TraceParser::IsAddrOprd(const std::string & tok) const {
     return (tok.size() > 3 && tok.substr(0, 2) == "0x"); 
 }
 
-reg::RegOprd TraceParser::parseReg(const std::string & tok, reg::RegOprdT type, uint32_t pos) const {
+reg::Oprd TraceParser::parseReg(const std::string & tok, reg::OprdT type, uint32_t pos) const {
     if(tok.size() < 2) 
         throw std::invalid_argument("Invalid input: tok.size() < 2.\n");
-    if(tok[0] != 'R' && type != reg::RegOprdT::ADDR) 
+    if(tok[0] != 'R' && type != reg::OprdT::ADDR) 
         throw std::invalid_argument("Invalid input: register format.\n");
        
-    if(type == reg::RegOprdT::ADDR) 
-        return reg::RegOprd(reg::RegOprdT::ADDR, pos);
+    if(type == reg::OprdT::ADDR) 
+        return reg::Oprd(reg::OprdT::ADDR, pos, pos);
 
     uint32_t index; 
     try {
@@ -50,7 +50,14 @@ reg::RegOprd TraceParser::parseReg(const std::string & tok, reg::RegOprdT type, 
     } catch (const std::invalid_argument & e) {
         throw std::invalid_argument("Invalid input: register index.");
     }
-    reg::RegOprd reg(type, index, pos);
+
+    uint32_t set;
+    if (type == reg::OprdT::DST)
+        set = index / 64;
+    else 
+        set = pos;
+        
+    reg::Oprd reg(type, index, pos, set);
     return reg;
 }
 
@@ -75,64 +82,55 @@ op::Opcode TraceParser::parseOpcode(const std::string & tok) const noexcept {
         return op::str2op(tok);
 }
 
-void TraceParser::extendHmmaRegs(std::vector<reg::RegOprd> & regs) const {
-    if(regs.size() < 4) 
+void TraceParser::extendHmmaRegs(std::vector<reg::Oprd> & oprds) const {
+    if(oprds.size() < 4) 
         throw std::invalid_argument("Invalid input.\n");
     
-    auto matAReg = regs.at(0);
-    auto matBReg = regs.at(1);
-    auto matCReg = regs.at(2);
-    auto matDReg = regs.at(3); 
-    regs.clear();
+    auto matA = oprds.at(0);
+    auto matB = oprds.at(1);
+    auto matC = oprds.at(2);
+    auto matD = oprds.at(3); 
+    oprds.clear();
     
-    matAReg.regPos = 0;
-    regs.push_back(matAReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 0));
+    oprds.push_back(reg::Oprd(matA.type,       matA.index,     0, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matA.index + 1, 0, 1));
 
-    matBReg.regPos = 1;
-    regs.push_back(matBReg);
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matB.index,     1, 2));
     
-    matCReg.regPos = 2;
-    regs.push_back(matCReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 2));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 2));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index,     2, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 1, 2, 1));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 2, 2, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 3, 2, 3));
 
-    matDReg.regPos = 0; 
-    regs.push_back(matDReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 1, 0));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 2, 0));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 3, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index,     4, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 1, 4, 1));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 2, 4, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 3, 4, 3));
 }
 
-void TraceParser::extendImmaRegs(std::vector<reg::RegOprd> & regs) const {
-    if(regs.size() < 4) 
+void TraceParser::extendImmaRegs(std::vector<reg::Oprd> & oprds) const {
+    if(oprds.size() < 4) 
         throw std::invalid_argument("Invalid input.\n");
     
-    auto matAReg = regs.at(0);
-    auto matBReg = regs.at(1);
-    auto matCReg = regs.at(2);
-    auto matDReg = regs.at(3); 
-    regs.clear();
+    auto matA = oprds.at(0);
+    auto matB = oprds.at(1);
+    auto matC = oprds.at(2);
+    auto matD = oprds.at(3); 
+    oprds.clear();
     
-    matAReg.regPos = 0;
-    regs.push_back(matAReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matAReg.regIndex + 1, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC,       matA.index,     0, 0));
 
-    matBReg.regPos = 1;
-    regs.push_back(matBReg);
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matB.index,     1, 1));
     
-    matCReg.regPos = 2;
-    regs.push_back(matCReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 1, 2));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 2, 2));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::SRC, matCReg.regIndex + 3, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index,     2, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 1, 2, 1));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 2, 2, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 3, 2, 3));
 
-    matDReg.regPos = 0; // DST 
-    regs.push_back(matDReg);
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 1, 0));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 2, 0));
-    regs.push_back(reg::RegOprd(reg::RegOprdT::DST, matDReg.regIndex + 3, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index,     4, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 1, 4, 1));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 2, 4, 2));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 3, 4, 3));
 }
 
 TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
@@ -153,11 +151,14 @@ TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
 
     op::Opcode opcode;
     std::bitset<4> flags = static_cast<std::bitset<4>>("0000");  
-    auto it = reuseInfo->find(pc);
-    if (it != reuseInfo->end())
+
+    auto tabIt = map->find(kernelInfo.kernelSym);
+    auto tab = reuseInfo->at(tabIt->second);
+    auto it = tab.find(pc);
+    if (it != tab.end())
         flags = it->second;
 
-    std::vector<reg::RegOprd> regs;
+    std::vector<reg::Oprd> regs;
 
     if (toks[2] == "1") {
         opcode = this->parseOpcode(toks.at(4));
@@ -165,16 +166,16 @@ TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
         uint32_t curPos = 0;
         for (auto i = 5; i < toks.size(); i++) {
             auto & s = toks.at(i);
-            if (isRegOprd(s)) {
-                regs.push_back(parseReg(s, reg::RegOprdT::SRC, curPos));
+            if (isOprd(s)) {
+                regs.push_back(parseReg(s, reg::OprdT::SRC, curPos));
                 curPos++;
             }
             else if (IsAddrOprd(s)) {
-                regs.push_back(this->parseReg(s, reg::RegOprdT::ADDR, curPos));
+                regs.push_back(this->parseReg(s, reg::OprdT::ADDR, curPos));
                 curPos++;
             }
         }
-        regs.push_back(parseReg(toks.at(3), reg::RegOprdT::DST, 0));
+        regs.push_back(parseReg(toks.at(3), reg::OprdT::DST, 0));
         if (opcode == op::OP_HMMA) extendHmmaRegs(regs);
         if (opcode == op::OP_IMMA) extendImmaRegs(regs);
         return TraceInst(pc, mask, blockId, wId, opcode, regs, flags);
@@ -184,12 +185,12 @@ TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
         uint32_t curPos = 0;
         for (auto i = 5; i < toks.size(); i++) {
             auto & s = toks.at(i);
-            if (isRegOprd(s)) {
-                regs.push_back(parseReg(s, reg::RegOprdT::SRC, curPos));
+            if (isOprd(s)) {
+                regs.push_back(parseReg(s, reg::OprdT::SRC, curPos));
                 curPos++;
             }
             else if (IsAddrOprd(s)) {
-                regs.push_back(this->parseReg(s, reg::RegOprdT::ADDR, curPos));
+                regs.push_back(this->parseReg(s, reg::OprdT::ADDR, curPos));
                 curPos++;
             }
         }
@@ -204,6 +205,7 @@ TraceInst TraceParser::parse() {
 
     std::string instStr;
     std::getline(traceIfs, instStr);
+    // std::cout << instStr << std::endl;
 
     std::stringstream ss(instStr);
 	std::string tokStr;
@@ -214,6 +216,12 @@ TraceInst TraceParser::parse() {
 
     if (tokStrs.empty())
         return this->parse();
+    else if(tokStrs.at(0) == "-kernel" && tokStrs.at(1) == "name") {
+        kernelInfo.kernelSym = tokStrs.at(3);
+        if (map->find(kernelInfo.kernelSym) == map->end())
+            throw std::runtime_error("Runtime error: kernel name error.\n");
+        return parse();
+    }
     else if(tokStrs.at(0) == "thread" && tokStrs.at(1) == "block" && tokStrs.size() == 4) {
         int tbX, tbY, tbZ;
         size_t posY = tokStrs.at(3).find(',', 0);

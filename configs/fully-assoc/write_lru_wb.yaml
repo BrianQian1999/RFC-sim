@@ -3,14 +3,14 @@
 #evict <write-back=0, write-through=1>
 
 arch: 0
-assoc: 2
+assoc: 8
 policy: 
-  - alloc: 0
+  - alloc: 1
   - repl: 0
-  - evict: 1
+  - evict: 0
+bitwidth: 128
 energy_model:
-  - rfc.r: 5.4969
-  - rfc.w: 6.44151
-  - mrf.r: 45.4802
-  - mrf.w: 47.2171
-
+  - rfc.r: 43.2275
+  - rfc.w: 44.0041
+  - mrf.r: 17.4632 
+  - mrf.w: 17.9704

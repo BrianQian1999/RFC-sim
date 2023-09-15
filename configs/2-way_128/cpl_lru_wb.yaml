@@ -1,0 +1,13 @@
+arch: 0
+assoc: 2
+policy: 
+  - alloc: 2
+  - repl: 0
+  - evict: 0
+bitwidth: 128
+energy_model:
+  - rfc.r: 23.4685
+  - rfc.w: 24.2801
+  - mrf.r: 17.4632 
+  - mrf.w: 17.9704
+

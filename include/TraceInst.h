@@ -7,7 +7,7 @@
 #include <cstdint>
 #include "Util.h"
 #include "TraceOpcode.h"
-#include "RegOprd.h"
+#include "Oprd.h"
 
 struct TraceInst {	
 	TraceInst()=default;
@@ -17,7 +17,7 @@ struct TraceInst {
 		util::Dim3<int> tbId,
 		uint32_t wId,
 		op::Opcode opcode,
-		std::vector<reg::RegOprd> regPool,
+		std::vector<reg::Oprd> regPool,
 		std::bitset<4> reuseFlag
 	) : pc(pc), mask(mask), tbId(tbId), wId(wId), opcode(opcode), regPool(regPool), reuseFlag(reuseFlag) {}
 
@@ -27,7 +27,7 @@ struct TraceInst {
 	uint32_t wId; // warp id
 
 	op::Opcode opcode;	
-	std::vector<reg::RegOprd> regPool;
+	std::vector<reg::Oprd> regPool;
     std::bitset<4> reuseFlag;
 };
 

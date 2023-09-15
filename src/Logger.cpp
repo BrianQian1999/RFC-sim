@@ -8,7 +8,7 @@ namespace Logger {
         const stat::RfcStat& statBase,
         const stat::RfcStat& statOpt 
     ) {
-        of << "(" << cfg.assoc << "-way : " << cfg.allocPlcy << " : " << cfg.replPlcy << ");"; 
+        of << "(" << cfg.assoc << "-way : " << cfg.allocPlcy << " : " << cfg.replPlcy << " : " <<  cfg.evictPlcy << ");"; 
         
         double rdHitRate = double (statOpt.rfcRdHitNum) / (statOpt.rfcRdHitNum+statOpt.rfcRdMissNum) * 100;
         double wrHitRate = double (statOpt.rfcWrHitNum) / (statOpt.rfcWrHitNum+statOpt.rfcWrMissNum) * 100;

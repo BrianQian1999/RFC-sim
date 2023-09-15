@@ -34,6 +34,7 @@ struct Cam {
 
 	void flush() noexcept;
 	void aging() noexcept;
+	std::pair<bool, uint32_t> search(uint32_t) noexcept;
 	std::pair<bool, uint32_t> search(uint32_t, uint32_t) noexcept;
 };
 
@@ -55,20 +56,26 @@ public:
 		const std::shared_ptr<Mrf>&
 	);
 
-	std::pair<bool, uint32_t> search(const reg::RegOprd&, uint32_t);
+	inline uint32_t cnt();
+	uint32_t setIdx(const reg::Oprd&) noexcept;
+
+	std::pair<bool, uint32_t> search(const reg::Oprd&);
+	std::pair<bool, uint32_t> search(const reg::Oprd&, uint32_t);
 	void aging() noexcept;
 
 	void exec(const TraceInst&);
-	void evict() noexcept;
+	void execFullyAssoc(const TraceInst&);
+	void execSetAssoc(const TraceInst&);
 
 	std::pair<bool, uint32_t> replWrapper(uint32_t) noexcept;
 	std::pair<bool, uint32_t> lruRepl(uint32_t) noexcept;
 	std::pair<bool, uint32_t> fifoRepl(uint32_t) noexcept;
 
-	void allocWrapper(const reg::RegOprd&);
-	void fullCplAlloc(const reg::RegOprd&);
-	void readAlloc(const reg::RegOprd&);
-	void writeAlloc(const reg::RegOprd&);
-	void writeOnlyAlloc(const reg::RegOprd&);
+	void allocWrapper(const reg::Oprd&);
+	void readAlloc(const reg::Oprd&);
+	void writeAlloc(const reg::Oprd&);
+	void cplAidedAlloc(const reg::Oprd&);
+	void cplAidedItlAlloc(const reg::Oprd&);
+	
 	friend std::ostream & operator<<(std::ostream&, const Rfc&);
 };

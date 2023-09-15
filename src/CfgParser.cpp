@@ -21,6 +21,7 @@ namespace cfg {
             cfg->replPlcy = static_cast<ReplPlcy>(yamlNode["policy"][1]["repl"].as<int>());
             cfg->evictPlcy = static_cast<EvictPlcy>(yamlNode["policy"][2]["evict"].as<int>());
             cfg->assoc = yamlNode["assoc"].as<int>();
+            cfg->bitWidth = yamlNode["bitwidth"].as<int>();
             cfg->engyMdl.rfcRdEngy = yamlNode["energy_model"][0]["rfc.r"].as<float>();
             cfg->engyMdl.rfcWrEngy = yamlNode["energy_model"][1]["rfc.w"].as<float>();
             cfg->engyMdl.mrfRdEngy = yamlNode["energy_model"][2]["mrf.r"].as<float>();
@@ -29,8 +30,10 @@ namespace cfg {
             std::cerr << "yaml parsing error: " << e.what() << std::endl;
         }
 
-        if (cfg->allocPlcy == AllocPlcy::fullCplAlloc && cfg->assoc != 2) 
-            throw std::invalid_argument("Invalid input: fullCplAlloc must have 2-way assoc cache.\n");
+        if (cfg->allocPlcy == AllocPlcy::cplAidedAlloc && cfg->assoc != 2) 
+            throw std::invalid_argument("Invalid input: Compiler-aided allocation must have 2-way assoc cache.\n");
+        if (cfg->bitWidth % 32 != 0) 
+            throw std::invalid_argument("Invalid input: bitwidth % 32 must be 0.\n");
     } 
 
     void CfgParser::print() const {

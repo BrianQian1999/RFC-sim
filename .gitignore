@@ -1,5 +1,5 @@
-traces/*
 obj/*
 asm/*
-logs/*
+log/*
+scr/*
 .vscode/*

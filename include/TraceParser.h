@@ -35,24 +35,29 @@ private:
     using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
     std::ifstream traceIfs;
 	KernelInfo kernelInfo;
-    std::shared_ptr<mapT> reuseInfo;
+    std::shared_ptr<std::vector<mapT>> reuseInfo;
+    std::shared_ptr<std::unordered_map<std::string, size_t>> map;
     util::Dim3<int> blockId;
     unsigned wId; 
 
 public:
-	explicit TraceParser(const std::string &, const std::shared_ptr<mapT>&);
+	explicit TraceParser(
+        const std::string &, 
+        const std::shared_ptr<std::vector<mapT>>&,
+        const std::shared_ptr<std::unordered_map<std::string, size_t>>&
+    );
  
     bool eof() const;
-    void reset(const std::string&, const std::shared_ptr<mapT>&);
-    bool isRegOprd(const std::string&) const;
+    void reset(const std::string&);
+    bool isOprd(const std::string&) const;
     bool IsAddrOprd(const std::string&) const;
-    reg::RegOprd parseReg(const std::string&, reg::RegOprdT, uint32_t) const;
+    reg::Oprd parseReg(const std::string&, reg::OprdT, uint32_t) const;
     
     bool isInst(const std::vector<std::string>&) const;
     op::Opcode parseOpcode(const std::string&) const noexcept;
 
-    void extendHmmaRegs(std::vector<reg::RegOprd>&) const;
-    void extendImmaRegs(std::vector<reg::RegOprd>&) const;
+    void extendHmmaRegs(std::vector<reg::Oprd>&) const;
+    void extendImmaRegs(std::vector<reg::Oprd>&) const;
     TraceInst parseInst(const std::vector<std::string> &);
     TraceInst parse();
 };

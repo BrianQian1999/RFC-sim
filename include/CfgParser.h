@@ -21,11 +21,10 @@ namespace cfg {
 
     // Allocation policy
     enum class AllocPlcy {
-        fullCplAlloc = 0,
-        readAlloc,
+        readAlloc=0,
         writeAlloc,
-        writeOnlyAlloc,
-		customAlloc
+        cplAidedAlloc,
+		cplAidedItlAlloc
     };
 
 	// Replacement policy
@@ -56,11 +55,10 @@ namespace cfg {
     }
 
     inline const std::unordered_map<AllocPlcy, std::string> alloc2StrTab {
-        std::pair<AllocPlcy, std::string>(AllocPlcy::fullCplAlloc, "fullCpl"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::writeOnlyAlloc, "writeOnly"),
-		std::pair<AllocPlcy, std::string>(AllocPlcy::customAlloc, "custom")
+        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "cplAided"),
+		std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedItlAlloc, "cplAided-itl")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const AllocPlcy & plcy) {
@@ -119,6 +117,7 @@ namespace cfg {
         EvictPlcy evictPlcy;
         uint32_t assoc;
 
+        uint32_t bitWidth;
         EngyMdl engyMdl;
 
         GlobalCfg() {}
@@ -126,9 +125,9 @@ namespace cfg {
     };
 
     inline std::ostream & operator<<(std::ostream & os, const GlobalCfg & cfg) {
-        os << "[Cfg]: (arch, alloc, repl, evict, assoc, energy model) -> ("
+        os << "[Cfg]: (arch, alloc, repl, evict, assoc, bitwidth, energy model) -> ("
            << cfg.arch << ", " << cfg.allocPlcy << ", " << cfg.replPlcy << ", " << cfg.evictPlcy << ", " 
-           << cfg.assoc << ", " << cfg.engyMdl << ")\n";
+           << cfg.assoc << ", " << cfg.bitWidth << ", " << cfg.engyMdl << ")\n";
         return os;
     }
 

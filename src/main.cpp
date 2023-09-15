@@ -32,15 +32,14 @@ int main(int argc, char ** argv) {
     const std::string cfgFile = std::string(argv[4]);
     const std::string asmFile = std::string(argv[6]);
 	const std::string logFile = std::string(argv[8]);
-
 	const std::string traceListFile = traceDir + "/kernelslist.g";
 
 	std::cout << "[RFC-sim] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 	std::cout << "[RFC-sim] trace file dir: " << traceListFile << std::endl;
 	std::cout << "[RFC-sim] Config file: " << cfgFile << std::endl;
     std::cout << "[RFC-sim] asm file: " << asmFile << std::endl;
-
-	// list all kernels
+	
+	// detect all kernels
 	std::ifstream traceListIf(traceListFile);
 	std::string s;
 	std::vector<std::string> traceList;
@@ -53,22 +52,27 @@ int main(int argc, char ** argv) {
 		return 1;
 	}
 
-	// Parsing
+	/*
+	############################################################################################################
+	*/
+	// Parse config
 	std::shared_ptr<cfg::GlobalCfg> cfg = std::make_shared<cfg::GlobalCfg>(); 
-	
     std::unique_ptr<cfg::CfgParser> cfgParser = std::make_unique<cfg::CfgParser>(cfgFile, cfg);
 	cfgParser->parse();
 	cfgParser->print();
 
 	using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
-	std::vector<mapT> vtab;
-	vtab.resize(traceList.size());
-	
-	std::shared_ptr<std::vector<mapT>> tab = std::make_shared<std::vector<mapT>>(vtab);
-	std::unique_ptr<AsmParser> asmParser = std::make_unique<AsmParser>(asmFile, tab);
+	std::unique_ptr<AsmParser> asmParser = std::make_unique<AsmParser>(
+		asmFile, 
+		std::make_shared<std::vector<mapT>>(),
+		std::make_shared<std::unordered_map<std::string, size_t>>()
+	);
 	asmParser->parse();
-
-    std::unique_ptr<TraceParser> traceParser = std::make_unique<TraceParser>(traceList.at(0), std::make_shared<mapT>(tab->at(0)));
+	std::unique_ptr<TraceParser> traceParser = std::make_unique<TraceParser>(
+		traceList.at(0), 
+		asmParser->tab,
+		asmParser->map
+	);
 
 	// statistics
 	auto engyMdl = cfg->engyMdl;
@@ -81,8 +85,9 @@ int main(int argc, char ** argv) {
 	// Run
     std::cout << "[RFC-sim] MRF only..." << std::endl;
 	size_t idx = 0;
+	
 	for(auto & traceFile : traceList) {
-		traceParser->reset(traceFile, std::make_shared<mapT>(tab->at(idx)));
+		traceParser->reset(traceFile);
 		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
@@ -108,10 +113,12 @@ int main(int argc, char ** argv) {
 
 	idx = 0;
 	for(auto & traceFile : traceList) {
-		traceParser->reset(traceFile, std::make_shared<mapT>(tab->at(idx)));	
+		traceParser->reset(traceFile);	
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
-          
+			if (inst.opcode == op::OP_VOID)
+				break;
+
 			#ifndef NDEBUG
 			std::cout << "[RFC-sim] " << inst << std::endl;
 			while(true) {
@@ -120,7 +127,6 @@ int main(int argc, char ** argv) {
 					break;
 			}
 			#endif
-
 			try {
 				rfcArry[inst.wId % 32].exec(inst);
 				#ifndef NDEBUG
