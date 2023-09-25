@@ -10,32 +10,39 @@
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
-#include <functional>
 
-struct RfcEntry {
-	RfcEntry();
-
+struct RfcBlock {
+	RfcBlock();
     uint32_t tag; 
-    uint32_t lruAge;
-	uint32_t fifoAge;
-    bool isDirty;
+	uint32_t age;
+    bool dt;
 
 	void clear() noexcept;
 	void aging() noexcept;
-	void set(uint32_t, uint32_t, uint32_t, bool) noexcept;
+	void set(uint32_t, uint32_t, bool) noexcept;
 };
 
-inline std::ostream & operator<<(std::ostream &, const RfcEntry&);
+inline std::ostream & operator<<(std::ostream &, const RfcBlock&);
 
 struct Cam {
-	explicit Cam(uint32_t assoc) : assoc(assoc) {}
-	std::array<RfcEntry, 8> mem;
-	uint32_t assoc; // associativity
 
-	void flush() noexcept;
-	void aging() noexcept;
-	std::pair<bool, uint32_t> search(uint32_t) noexcept;
-	std::pair<bool, uint32_t> search(uint32_t, uint32_t) noexcept;
+	explicit Cam(uint32_t assoc, uint32_t nBlock, uint32_t nDW) : assoc(assoc), nDW(nDW) {
+		for (auto & b : mem) b.resize(nBlock);
+		for (auto & b : vMem) b.resize(nBlock);
+	}
+
+	std::array<std::vector<RfcBlock>, 32> mem;
+	std::array<std::vector<RfcBlock>, 32> vMem;
+
+	uint32_t assoc;
+	uint32_t nDW; 
+	
+	void flush();
+	void aging();
+	void sync();
+
+	std::pair<bool, uint32_t> search(uint32_t, uint32_t);
+	std::pair<bool, uint32_t> search(uint32_t, uint32_t, uint32_t);
 };
 
 inline std::ostream & operator<<(std::ostream &, const Cam&);
@@ -49,6 +56,8 @@ private:
 
 	std::bitset<32> mask;
 	std::bitset<4> flags;
+
+	std::array<std::bitset<32>, 4> ioBuffer;
 public:
 	explicit Rfc(
 		const std::shared_ptr<cfg::GlobalCfg>&,
@@ -56,26 +65,25 @@ public:
 		const std::shared_ptr<Mrf>&
 	);
 
-	inline uint32_t cnt();
-	uint32_t setIdx(const reg::Oprd&) noexcept;
+	inline uint32_t ioCount(const std::bitset<32>&);
+	uint32_t mapSet(const reg::Oprd&) noexcept;
 
-	std::pair<bool, uint32_t> search(const reg::Oprd&);
 	std::pair<bool, uint32_t> search(const reg::Oprd&, uint32_t);
+	std::pair<bool, uint32_t> search(const reg::Oprd&, uint32_t, uint32_t);
+	
 	void aging() noexcept;
-
+	void flushIOBuffer();
+	void sync();
 	void exec(const TraceInst&);
-	void execFullyAssoc(const TraceInst&);
-	void execSetAssoc(const TraceInst&);
+	inline void ccHitHandler(const reg::Oprd&, uint32_t, uint32_t);
+	std::pair<bool, uint32_t> replWrapper(uint32_t, uint32_t);
 
-	std::pair<bool, uint32_t> replWrapper(uint32_t) noexcept;
-	std::pair<bool, uint32_t> lruRepl(uint32_t) noexcept;
-	std::pair<bool, uint32_t> fifoRepl(uint32_t) noexcept;
-
-	void allocWrapper(const reg::Oprd&);
-	void readAlloc(const reg::Oprd&);
-	void writeAlloc(const reg::Oprd&);
-	void cplAidedAlloc(const reg::Oprd&);
-	void cplAidedItlAlloc(const reg::Oprd&);
+	void allocWrapper(const reg::Oprd&, uint32_t);
+	
+	void readAlloc(const reg::Oprd&, uint32_t);
+	void writeAlloc(const reg::Oprd&, uint32_t);
+	void cplAidedAlloc(const reg::Oprd&, uint32_t);
+	void cplAidedItlAlloc(const reg::Oprd&, uint32_t);
 	
 	friend std::ostream & operator<<(std::ostream&, const Rfc&);
 };

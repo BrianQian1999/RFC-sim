@@ -34,7 +34,7 @@ int main(int argc, char ** argv) {
 	const std::string logFile = std::string(argv[8]);
 	const std::string traceListFile = traceDir + "/kernelslist.g";
 
-	std::cout << "[RFC-sim] >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+	std::cout << "[RFC-sim] Start ..." << std::endl;
 	std::cout << "[RFC-sim] trace file dir: " << traceListFile << std::endl;
 	std::cout << "[RFC-sim] Config file: " << cfgFile << std::endl;
     std::cout << "[RFC-sim] asm file: " << asmFile << std::endl;
@@ -83,7 +83,7 @@ int main(int argc, char ** argv) {
     auto mrf = std::make_shared<Mrf>(stat, iStat);
 
 	// Run
-    std::cout << "[RFC-sim] MRF only..." << std::endl;
+    std::cout << "[RFC-sim] Pre-processing ..." << std::endl;
 	size_t idx = 0;
 	
 	for(auto & traceFile : traceList) {
@@ -104,8 +104,7 @@ int main(int argc, char ** argv) {
 	stat->clear();
 
 	// RFC
-	std::cout << std::endl;
-    std::cout << "[RFC-sim] Turn on RFC..." << std::endl;
+    std::cout << "[RFC-sim] Simulating..." << std::endl;
 
 	std::vector<Rfc> rfcArry;
 	for (auto i = 0; i < 32; i++)
@@ -131,6 +130,7 @@ int main(int argc, char ** argv) {
 				rfcArry[inst.wId % 32].exec(inst);
 				#ifndef NDEBUG
 				std::cout << rfcArry.at(inst.wId % 32) << std::endl;
+				std::cout << *stat << std::endl;
 				#endif
 			} catch (std::exception & e) {
 				std::cerr << e.what() << std::endl;
@@ -139,19 +139,13 @@ int main(int argc, char ** argv) {
 		idx++;
 	}
 
-	std::cout << std::endl << std::endl;
-	std::cout << "| ================================ Statistics ======================================" << std::endl;
-    std::cout << "Workload: " << traceDir << std::endl;
-    std::cout << "Config: " << *cfg << std::endl;
-    std::cout << std::endl;
-	std::cout << " >----------------------------- Workload Stats ----------------------------<" << std::endl;
+	std::cout << std::endl;
+	std::cout << "[RFC-sim] Statistics... " << std::endl;
 	std::cout << iStatSwp << std::endl;
-	std::cout << " >----------------------------- MRF only ----------------------------<" << std::endl;
 	std::cout << statSwp << std::endl;
-	std::cout << " >----------------------------- RFC ---------------------------------<" << std::endl;
 	std::cout << *stat << std::endl;
-	std::cout << " >----------------------------- Comparison --------------------------<" << std::endl;
 	stat::RfcStat::printCmp(statSwp, *stat);
+	std::cout << std::endl;
 
 	std::ofstream of(logFile, std::ios::app);
 	if (of.is_open()) {
@@ -159,5 +153,6 @@ int main(int argc, char ** argv) {
 		of.close();
 	}
 
+    std::cout << "[RFC-sim] End.\n\n";
 	return 0;
 }

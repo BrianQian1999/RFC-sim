@@ -57,7 +57,7 @@ namespace cfg {
     inline const std::unordered_map<AllocPlcy, std::string> alloc2StrTab {
         std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "cplAided"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "cplAided-ln"),
 		std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedItlAlloc, "cplAided-itl")
     };
 
@@ -104,9 +104,9 @@ namespace cfg {
     };
 
     inline std::ostream & operator<<(std::ostream & os, const EngyMdl & engyMdl) {
-        std::cout << "(RFC.r | RFC.w | MRF.r | MRF.w) -> (";
-        std::cout << engyMdl.rfcRdEngy << " | " << engyMdl.rfcWrEngy << " | " << engyMdl.mrfRdEngy
-                  << " | " << engyMdl.mrfWrEngy << ")" << std::endl; 
+        std::cout << "(RFC.r, RFC.w, MRF.r, MRF.w) -> (";
+        std::cout << engyMdl.rfcRdEngy << ", " << engyMdl.rfcWrEngy << ", " << engyMdl.mrfRdEngy
+                  << ", " << engyMdl.mrfWrEngy << "," << std::endl; 
         return os;
     } 
 
@@ -115,7 +115,10 @@ namespace cfg {
         AllocPlcy allocPlcy;
         ReplPlcy replPlcy;
         EvictPlcy evictPlcy;
+        
         uint32_t assoc;
+        uint32_t nBlock;
+        uint32_t nDW;
 
         uint32_t bitWidth;
         EngyMdl engyMdl;
@@ -125,9 +128,9 @@ namespace cfg {
     };
 
     inline std::ostream & operator<<(std::ostream & os, const GlobalCfg & cfg) {
-        os << "[Cfg]: (arch, alloc, repl, evict, assoc, bitwidth, energy model) -> ("
+        os << "[RFC]: (arch, alloc, repl, evict, assoc, nBlock, nDW, bitwidth, energy model) -> \n\t("
            << cfg.arch << ", " << cfg.allocPlcy << ", " << cfg.replPlcy << ", " << cfg.evictPlcy << ", " 
-           << cfg.assoc << ", " << cfg.bitWidth << ", " << cfg.engyMdl << ")\n";
+           << cfg.assoc << ", " << cfg.nBlock << ", " << cfg.nDW << ", " << cfg.bitWidth << ", " << cfg.engyMdl << ")\n";
         return os;
     }
 

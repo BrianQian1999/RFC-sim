@@ -1,5 +1,7 @@
 arch: 0
 assoc: 2
+n_block: 8
+n_dw: 1
 policy: 
   - alloc: 3
   - repl: 1

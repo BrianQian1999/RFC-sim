@@ -4,10 +4,12 @@
 
 arch: 0
 assoc: 8
+n_block: 8
+n_dw: 1
 policy: 
   - alloc: 1
   - repl: 0
-  - evict: 1
+  - evict: 0
 bitwidth: 128
 energy_model:
   - rfc.r: 43.2275

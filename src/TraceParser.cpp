@@ -118,19 +118,15 @@ void TraceParser::extendImmaRegs(std::vector<reg::Oprd> & oprds) const {
     auto matD = oprds.at(3); 
     oprds.clear();
     
-    oprds.push_back(reg::Oprd(reg::OprdT::SRC,       matA.index,     0, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matA.index,     0, 0));
 
     oprds.push_back(reg::Oprd(reg::OprdT::SRC, matB.index,     1, 1));
     
     oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index,     2, 0));
     oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 1, 2, 1));
-    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 2, 2, 2));
-    oprds.push_back(reg::Oprd(reg::OprdT::SRC, matC.index + 3, 2, 3));
 
-    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index,     4, 0));
-    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 1, 4, 1));
-    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 2, 4, 2));
-    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 3, 4, 3));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index,     3, 0));
+    oprds.push_back(reg::Oprd(reg::OprdT::DST, matD.index + 1, 3, 1));
 }
 
 TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {

@@ -33,6 +33,36 @@ namespace stat {
         else rfcWrHitNum++;
     }
 
+    void RfcStat::trigger(Event e) noexcept {
+        switch(e) {
+            case(Event::RD_HIT): rfcRdHitNum++; break;
+            case(Event::RD_MISS): rfcRdMissNum++; break;
+            case(Event::WR_HIT): rfcWrHitNum++; break;
+            case(Event::WR_MISS):rfcWrMissNum++; break;
+
+            case(Event::CC_RD): rfcRdNum++; break;
+            case(Event::CC_WR): rfcWrNum++; break;
+            case(Event::RF_RD): mrfRdNum++; break;
+            case(Event::RF_WR): mrfWrNum++; break;
+            default: break;
+        }
+    } 
+    
+    void RfcStat::trigger(Event e, uint32_t acc) noexcept {
+        switch(e) {
+            case(Event::RD_HIT): rfcRdHitNum+=acc; break;
+            case(Event::RD_MISS): rfcRdMissNum+=acc; break;
+            case(Event::WR_HIT): rfcWrHitNum+=acc; break;
+            case(Event::WR_MISS):rfcWrMissNum+=acc; break;
+
+            case(Event::CC_RD): rfcRdNum+=acc; break;
+            case(Event::CC_WR): rfcWrNum+=acc; break;
+            case(Event::RF_RD): mrfRdNum+=acc; break;
+            case(Event::RF_WR): mrfWrNum+=acc; break;
+            default: break;
+        }
+    }
+
     void RfcStat::clear() noexcept {
         mrfRdNum=0;
         mrfWrNum=0;
@@ -54,12 +84,11 @@ namespace stat {
     void RfcStat::printCmp(const RfcStat & mrfOnlyStat, const RfcStat & rfcStat) {
         int64_t mrfRdReduction = mrfOnlyStat.mrfRdNum - rfcStat.mrfRdNum;
         int64_t mrfWrReduction = mrfOnlyStat.mrfWrNum - rfcStat.mrfWrNum;
-        std::cout << "|------------------------ Comparison (MRF-only vs. RFC) ----------------------| " << std::endl;
-        std::cout << "(mrf.r avoided | mrf.w avoided) -> ("
-                  << (double) mrfRdReduction / mrfOnlyStat.mrfRdNum * 100 << "\% | "
+        std::cout << "\t(MRF.R avoided, MRF.W avoided) -> ("
+                  << (double) mrfRdReduction / mrfOnlyStat.mrfRdNum * 100 << "\%, "
                   << (double) mrfWrReduction / mrfOnlyStat.mrfWrNum * 100 << "\%)\n";
 
-        std::cout << "E reduction -> " 
+        std::cout << "\t(Dynamic energy reduction) -> " 
                   << (mrfOnlyStat.calcRfEngy() - rfcStat.calcRfEngy()) 
                         / mrfOnlyStat.calcRfEngy() * 100 << "\%\n";
     }
