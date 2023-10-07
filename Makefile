@@ -1,6 +1,6 @@
 # Requirements: C++17, yaml-cpp
 
-SRC_DIR = ./src
+src_DIR = ./src
 INC_DIR = ./include
 OBJ_DIR = ./obj
 YAMLLIB_DIR = ~/yaml-cpp/build
@@ -11,8 +11,8 @@ LDFLAGS = -L $(YAMLLIB_DIR) -lyaml-cpp
 
 TARGET = rfc-sim
 
-SRCS = $(wildcard $(SRC_DIR)/*.cpp)
-OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))
+srcS = $(wildcard $(src_DIR)/*.cpp)
+OBJS = $(patsubst $(src_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(srcS))
 
 all: $(TARGET)
 
@@ -20,7 +20,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $^ $(CXXFLAGS) $(LDFLAGS) -o $@
 	rm $(OBJS)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(OBJ_DIR)/%.o: $(src_DIR)/%.cpp
 	$(CXX) $< $(CXXFLAGS) -c -o $@
 
 clean:

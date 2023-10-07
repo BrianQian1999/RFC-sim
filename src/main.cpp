@@ -1,6 +1,6 @@
 /*** RFC-sim is a analytic model for the Register File Cache used in NVIDIA GPUs
  *   For more information, please check the paper:
- *   Energy-efficient Mechanisms for Managing Thread Context in Throughput Processors (ISCA 2011)
+ *   Energy-efficient Mechanisms for Manstep Thread Context in Throughput Processors (ISCA 2011)
  *   Qiran Qian, <qiranq@kth.se>
  ***/
 
@@ -68,6 +68,7 @@ int main(int argc, char ** argv) {
 		std::make_shared<std::unordered_map<std::string, size_t>>()
 	);
 	asmParser->parse();
+
 	std::unique_ptr<TraceParser> traceParser = std::make_unique<TraceParser>(
 		traceList.at(0), 
 		asmParser->tab,
@@ -75,20 +76,16 @@ int main(int argc, char ** argv) {
 	);
 
 	// statistics
-	auto engyMdl = cfg->engyMdl;
-	std::shared_ptr<stat::RfcStat> stat = std::make_shared<stat::RfcStat>(engyMdl);
+	auto eMdl = cfg->eMdl;
+	std::shared_ptr<stat::RfcStat> stat = std::make_shared<stat::RfcStat>(eMdl);
 	std::shared_ptr<stat::InstStat> iStat = std::make_shared<stat::InstStat>();	
 
 	// mrf
     auto mrf = std::make_shared<Mrf>(stat, iStat);
-
-	// Run
     std::cout << "[RFC-sim] Pre-processing ..." << std::endl;
 	size_t idx = 0;
-	
 	for(auto & traceFile : traceList) {
 		traceParser->reset(traceFile);
-		// std::cout << "[RFC-sim] parsing: " << traceFile << std::endl;
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
 			if (inst.opcode == op::OP_VOID) break;
@@ -99,20 +96,20 @@ int main(int argc, char ** argv) {
 
 	auto iStatSwp = *iStat;
 	auto statSwp = *stat;
-
 	iStat->clear();
 	stat->clear();
 
 	// RFC
     std::cout << "[RFC-sim] Simulating..." << std::endl;
-
 	std::vector<Rfc> rfcArry;
 	for (auto i = 0; i < 32; i++)
 		rfcArry.push_back(Rfc(cfg, stat, mrf));
 
 	idx = 0;
 	for(auto & traceFile : traceList) {
-		traceParser->reset(traceFile);	
+		traceParser->reset(traceFile);
+
+		// lAheadBuf->clear();
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
 			if (inst.opcode == op::OP_VOID)
@@ -128,12 +125,9 @@ int main(int argc, char ** argv) {
 			#endif
 			try {
 				rfcArry[inst.wId % 32].exec(inst);
-				#ifndef NDEBUG
-				std::cout << rfcArry.at(inst.wId % 32) << std::endl;
-				std::cout << *stat << std::endl;
-				#endif
-			} catch (std::exception & e) {
+			} catch (const std::exception & e) {
 				std::cerr << e.what() << std::endl;
+				return -1;
 			}
 		}
 		idx++;
@@ -152,7 +146,6 @@ int main(int argc, char ** argv) {
 		Logger::logging(of, *cfg, *iStat, statSwp, *stat);
 		of.close();
 	}
-
     std::cout << "[RFC-sim] End.\n\n";
 	return 0;
 }

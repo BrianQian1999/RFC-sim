@@ -9,15 +9,15 @@ namespace reg {
 
     // register operand type
 	enum OprdT {
-		SRC = 0,
-		DST,
-        ADDR
+		src = 0,
+		dst,
+        addr
 	};
 
     inline const std::unordered_map<OprdT, std::string> OprdT2StrTab {
-        std::pair<OprdT, std::string>(SRC, "src"), // Read
-        std::pair<OprdT, std::string>(DST, "dst"), // Write
-        std::pair<OprdT, std::string>(ADDR, "addr") // Address
+        std::pair<OprdT, std::string>(src, "src"), // Read
+        std::pair<OprdT, std::string>(dst, "dst"), // Write
+        std::pair<OprdT, std::string>(addr, "addr") // Address
     };
 
     // OprdT -> std::string

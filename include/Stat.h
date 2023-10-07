@@ -8,15 +8,15 @@
 namespace stat {
 
     enum class Event {
-        RD_MISS,
-        RD_HIT,
-        WR_MISS,
-        WR_HIT,
+        rdMiss,
+        rdHit,
+        wrMiss,
+        wrHit,
 
-        CC_RD,
-        CC_WR,
-        RF_RD,
-        RF_WR
+        rfcRd,
+        rfcWr,
+        mrfRd,
+        mrfWr
     };
 
     struct InstStat {
@@ -35,7 +35,7 @@ namespace stat {
     }
     
     struct RfcStat {
-        cfg::EngyMdl engyMdl;
+        cfg::EngyMdl eMdl;
         explicit RfcStat(const cfg::EngyMdl&);
 
         uint64_t mrfRdNum;
@@ -76,10 +76,10 @@ namespace stat {
            << wrHitRate << "\%)" << std::endl;
 
         os << "\t(E.RFC.R, E.RFC.W, E.MRF.R, E.MRF.W (uJ) ) -> "
-           << s.rfcRdNum * s.engyMdl.rfcRdEngy / 1e6<< ", "
-           << s.rfcWrNum * s.engyMdl.rfcWrEngy / 1e6<< ", "
-           << s.mrfRdNum * s.engyMdl.mrfRdEngy / 1e6 << ", "
-           << s.mrfWrNum * s.engyMdl.mrfWrEngy / 1e6 << ")\n"; 
+           << s.rfcRdNum * s.eMdl.eRfcRd / 1e6<< ", "
+           << s.rfcWrNum * s.eMdl.eRfcWr / 1e6<< ", "
+           << s.mrfRdNum * s.eMdl.eMrfRd / 1e6 << ", "
+           << s.mrfWrNum * s.eMdl.eMrfWr / 1e6 << ")\n"; 
 
         float rfEngy = s.calcRfEngy();
         os << "\t(RF Dynamic Energy) -> " << rfEngy / 1e6 << " (uJ)" << std::endl; 

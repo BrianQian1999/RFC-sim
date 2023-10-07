@@ -1,13 +1,12 @@
-#alloc <full-comp=0, read-alloc=1, write-alloc=2>
-#repl <lru=0, fifo=1>
-#evict <write-back=0, write-through=1>
-
 arch: 0
 assoc: 2
+n_block: 8
+n_dw: 1
 policy: 
   - alloc: 2
-  - repl: 0
+  - repl: 1
   - evict: 0
+  - dest_map: 0
 bitwidth: 32
 energy_model:
   - rfc.r: 7.31519

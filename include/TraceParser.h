@@ -33,10 +33,15 @@ inline std::ostream & operator<< (std::ostream & os, const KernelInfo & info) {
 class TraceParser {
 private:
     using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
+    
     std::ifstream traceIfs;
+    std::ifstream lAheadIfs;
+
 	KernelInfo kernelInfo;
+    
     std::shared_ptr<std::vector<mapT>> reuseInfo;
     std::shared_ptr<std::unordered_map<std::string, size_t>> map;
+
     util::Dim3<int> blockId;
     unsigned wId; 
 

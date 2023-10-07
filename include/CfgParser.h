@@ -13,7 +13,7 @@
 namespace cfg {
 
     // default arch: sm75 (Turing)
-    enum class Arch {
+    enum class SmArch {
         sm70, 
         sm75 = 0,
         sm80
@@ -23,8 +23,7 @@ namespace cfg {
     enum class AllocPlcy {
         readAlloc=0,
         writeAlloc,
-        cplAidedAlloc,
-		cplAidedItlAlloc
+        cplAidedAlloc
     };
 
 	// Replacement policy
@@ -35,18 +34,23 @@ namespace cfg {
 
 	// Eviction Policy
 	enum class EvictPlcy {
-		writeBack = 0, // if dst reg hit, immediately write a copy in MRF
-		writeThrough // write data back to MRF only when dirty data is evicted
+		writeBack = 0,
+		writeThrough
 	};
 
-    // Arch -> std::string
-    inline const std::unordered_map<Arch, std::string> arch2StrTab {
-        std::pair<Arch, std::string>(Arch::sm70, "sm70"),
-        std::pair<Arch, std::string>(Arch::sm75, "sm75"),
-        std::pair<Arch, std::string>(Arch::sm80, "sm80")
+    enum class DestMap {
+        ln, 
+        itl
     };
 
-    inline std::ostream & operator<<(std::ostream & os, const Arch & arch) {
+    // SmArch -> std::string
+    inline const std::unordered_map<SmArch, std::string> arch2StrTab {
+        std::pair<SmArch, std::string>(SmArch::sm70, "sm70"),
+        std::pair<SmArch, std::string>(SmArch::sm75, "sm75"),
+        std::pair<SmArch, std::string>(SmArch::sm80, "sm80")
+    };
+
+    inline std::ostream & operator<<(std::ostream & os, const SmArch & arch) {
         auto it = arch2StrTab.find(arch);
         if(it == arch2StrTab.end()) 
             throw std::invalid_argument("Invalid GPU architecture.\n");
@@ -55,10 +59,9 @@ namespace cfg {
     }
 
     inline const std::unordered_map<AllocPlcy, std::string> alloc2StrTab {
-        std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "cplAided-ln"),
-		std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedItlAlloc, "cplAided-itl")
+        std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read-allocate"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write-allocate"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "compiler-aided allocate")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const AllocPlcy & plcy) {
@@ -97,40 +100,45 @@ namespace cfg {
 
     // Energy model
     struct EngyMdl {
-        float rfcRdEngy;
-        float rfcWrEngy;
-        float mrfRdEngy;
-        float mrfWrEngy;
+        float eRfcRd;
+        float eRfcWr;
+        float eMrfRd;
+        float eMrfWr;
     };
 
-    inline std::ostream & operator<<(std::ostream & os, const EngyMdl & engyMdl) {
-        std::cout << "(RFC.r, RFC.w, MRF.r, MRF.w) -> (";
-        std::cout << engyMdl.rfcRdEngy << ", " << engyMdl.rfcWrEngy << ", " << engyMdl.mrfRdEngy
-                  << ", " << engyMdl.mrfWrEngy << "," << std::endl; 
+    inline std::ostream & operator<<(std::ostream & os, const EngyMdl & eMdl) {
+        std::cout << "(RFC.r, RFC.w, MRF.r, MRF.w) -> (\n\t";
+        std::cout << eMdl.eRfcRd << ", " 
+                  << eMdl.eRfcWr << ", " 
+                  << eMdl.eMrfRd << ", " 
+                  << eMdl.eMrfWr << ")\n";
         return os;
     } 
 
     struct GlobalCfg {
-        Arch arch;
-        AllocPlcy allocPlcy;
-        ReplPlcy replPlcy;
-        EvictPlcy evictPlcy;
+        SmArch arch;
+        AllocPlcy alloc;
+        ReplPlcy repl;
+        EvictPlcy ev;
+        DestMap dMap;
+
         
         uint32_t assoc;
-        uint32_t nBlock;
+        uint32_t nBlk;
         uint32_t nDW;
+        uint32_t bw;
 
-        uint32_t bitWidth;
-        EngyMdl engyMdl;
+        EngyMdl eMdl;
 
         GlobalCfg() {}
-        GlobalCfg(Arch, AllocPlcy, ReplPlcy, EvictPlcy);
+        GlobalCfg(SmArch, AllocPlcy, ReplPlcy, EvictPlcy);
     };
 
     inline std::ostream & operator<<(std::ostream & os, const GlobalCfg & cfg) {
-        os << "[RFC]: (arch, alloc, repl, evict, assoc, nBlock, nDW, bitwidth, energy model) -> \n\t("
-           << cfg.arch << ", " << cfg.allocPlcy << ", " << cfg.replPlcy << ", " << cfg.evictPlcy << ", " 
-           << cfg.assoc << ", " << cfg.nBlock << ", " << cfg.nDW << ", " << cfg.bitWidth << ", " << cfg.engyMdl << ")\n";
+        os << "[RFC]: (arch, alloc, repl, evict, assoc, nBlk, nDW, bitwidth, energy model) -> \n\t("
+           << cfg.arch << ", " << cfg.alloc << ", " << cfg.repl << ", " << cfg.ev << ", " 
+           << cfg.assoc << ", " << cfg.nBlk << ", " << cfg.nDW << ", " << cfg.bw << ", " 
+           << cfg.eMdl << ")\n";
         return os;
     }
 

@@ -2,7 +2,7 @@
 RFC-sim is an analytic model for evaluating the effect of Register File Cache (RFC) in NVIDIA GPUs. 
 
 For more information, please check the original paper describing RFC: 
-Energy-efficient Mechanisms for Managing Thread Context in Throughput Processors
+Energy-efficient Mechanisms for Manstep Thread Context in Throughput Processors
 <https://ieeexplore.ieee.org/document/6307762>
 
 The model is utilized in my thesis project: 

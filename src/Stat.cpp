@@ -12,7 +12,7 @@ namespace stat {
         totInstNum = 0;
     }
 
-    RfcStat::RfcStat(const cfg::EngyMdl& mdl) : engyMdl(mdl) {
+    RfcStat::RfcStat(const cfg::EngyMdl& mdl) : eMdl(mdl) {
         mrfRdNum=0;
         mrfWrNum=0;
         rfcRdNum=0;
@@ -35,30 +35,30 @@ namespace stat {
 
     void RfcStat::trigger(Event e) noexcept {
         switch(e) {
-            case(Event::RD_HIT): rfcRdHitNum++; break;
-            case(Event::RD_MISS): rfcRdMissNum++; break;
-            case(Event::WR_HIT): rfcWrHitNum++; break;
-            case(Event::WR_MISS):rfcWrMissNum++; break;
+            case(Event::rdHit): rfcRdHitNum++; break;
+            case(Event::rdMiss): rfcRdMissNum++; break;
+            case(Event::wrHit): rfcWrHitNum++; break;
+            case(Event::wrMiss):rfcWrMissNum++; break;
 
-            case(Event::CC_RD): rfcRdNum++; break;
-            case(Event::CC_WR): rfcWrNum++; break;
-            case(Event::RF_RD): mrfRdNum++; break;
-            case(Event::RF_WR): mrfWrNum++; break;
+            case(Event::rfcRd): rfcRdNum++; break;
+            case(Event::rfcWr): rfcWrNum++; break;
+            case(Event::mrfRd): mrfRdNum++; break;
+            case(Event::mrfWr): mrfWrNum++; break;
             default: break;
         }
     } 
     
     void RfcStat::trigger(Event e, uint32_t acc) noexcept {
         switch(e) {
-            case(Event::RD_HIT): rfcRdHitNum+=acc; break;
-            case(Event::RD_MISS): rfcRdMissNum+=acc; break;
-            case(Event::WR_HIT): rfcWrHitNum+=acc; break;
-            case(Event::WR_MISS):rfcWrMissNum+=acc; break;
+            case(Event::rdHit): rfcRdHitNum+=acc; break;
+            case(Event::rdMiss): rfcRdMissNum+=acc; break;
+            case(Event::wrHit): rfcWrHitNum+=acc; break;
+            case(Event::wrMiss):rfcWrMissNum+=acc; break;
 
-            case(Event::CC_RD): rfcRdNum+=acc; break;
-            case(Event::CC_WR): rfcWrNum+=acc; break;
-            case(Event::RF_RD): mrfRdNum+=acc; break;
-            case(Event::RF_WR): mrfWrNum+=acc; break;
+            case(Event::rfcRd): rfcRdNum+=acc; break;
+            case(Event::rfcWr): rfcWrNum+=acc; break;
+            case(Event::mrfRd): mrfRdNum+=acc; break;
+            case(Event::mrfWr): mrfWrNum+=acc; break;
             default: break;
         }
     }
@@ -75,10 +75,10 @@ namespace stat {
     }
 
     float RfcStat::calcRfEngy() const {
-        return (mrfRdNum * engyMdl.mrfRdEngy) + 
-               (mrfWrNum * engyMdl.mrfWrEngy) + 
-               (rfcRdNum * engyMdl.rfcRdEngy) + 
-               (rfcWrNum * engyMdl.rfcWrEngy);
+        return (mrfRdNum * eMdl.eMrfRd) + 
+               (mrfWrNum * eMdl.eMrfWr) + 
+               (rfcRdNum * eMdl.eRfcRd) + 
+               (rfcWrNum * eMdl.eRfcWr);
     }
     
     void RfcStat::printCmp(const RfcStat & mrfOnlyStat, const RfcStat & rfcStat) {
