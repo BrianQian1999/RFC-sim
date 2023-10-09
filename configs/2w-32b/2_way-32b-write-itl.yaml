@@ -1,0 +1,16 @@
+arch: 0
+assoc: 2
+n_block: 8
+n_dw: 1
+policy: 
+  - alloc: 1
+  - repl: 1
+  - evict: 0
+  - dest_map: 1
+bitwidth: 32
+energy_model:
+  - rfc.r: 7.31519
+  - rfc.w: 8.76570
+  - mrf.r: 17.4632 
+  - mrf.w: 17.9704
+

@@ -49,8 +49,8 @@ inline std::ostream & operator<<(std::ostream &, const Cam&);
 class Rfc{
 private:
 	std::shared_ptr<cfg::GlobalCfg> cfg;
+	std::shared_ptr<stat::RfcStat> scbBase;
 	std::shared_ptr<stat::RfcStat> scb;
-	std::shared_ptr<Mrf> mrf;
 	std::unique_ptr<Cam> cam;
 
 	std::bitset<32> mask;
@@ -61,7 +61,7 @@ public:
 	explicit Rfc(
 		const std::shared_ptr<cfg::GlobalCfg>&,
 		const std::shared_ptr<stat::RfcStat>&,
-		const std::shared_ptr<Mrf>&
+		const std::shared_ptr<stat::RfcStat>&
 	);
 
 	inline uint32_t bankTxCnt(const std::bitset<32>&);
@@ -72,6 +72,7 @@ public:
 	void step() noexcept;
 	void sync();
 	void exec(const TraceInst&);
+	void execTC(const TraceInst&);
 	void flushSimdBuf();
 	
 	inline void hitHandler(const reg::Oprd&, uint32_t, uint32_t);

@@ -77,73 +77,57 @@ int main(int argc, char ** argv) {
 
 	// statistics
 	auto eMdl = cfg->eMdl;
-	std::shared_ptr<stat::RfcStat> stat = std::make_shared<stat::RfcStat>(eMdl);
+	std::shared_ptr<stat::RfcStat> scoreboardBase = std::make_shared<stat::RfcStat>(eMdl);
+	std::shared_ptr<stat::RfcStat> scoreboard = std::make_shared<stat::RfcStat>(eMdl);
 	std::shared_ptr<stat::InstStat> iStat = std::make_shared<stat::InstStat>();	
-
-	// mrf
-    auto mrf = std::make_shared<Mrf>(stat, iStat);
-    std::cout << "[RFC-sim] Pre-processing ..." << std::endl;
-	size_t idx = 0;
-	for(auto & traceFile : traceList) {
-		traceParser->reset(traceFile);
-		while(!traceParser->eof()) {
-			auto inst = traceParser->parse();
-			if (inst.opcode == op::OP_VOID) break;
-			mrf->exec(inst);
-		}
-		idx++;
-	}
-
-	auto iStatSwp = *iStat;
-	auto statSwp = *stat;
-	iStat->clear();
-	stat->clear();
 
 	// RFC
     std::cout << "[RFC-sim] Simulating..." << std::endl;
 	std::vector<Rfc> rfcArry;
 	for (auto i = 0; i < 32; i++)
-		rfcArry.push_back(Rfc(cfg, stat, mrf));
+		rfcArry.push_back(Rfc(cfg, scoreboardBase, scoreboard));
 
-	idx = 0;
+	size_t idx = 0;
 	for(auto & traceFile : traceList) {
 		traceParser->reset(traceFile);
 
-		// lAheadBuf->clear();
 		while(!traceParser->eof()) {
 			auto inst = traceParser->parse();
 			if (inst.opcode == op::OP_VOID)
 				break;
 
 			#ifndef NDEBUG
-			std::cout << "[RFC-sim] " << inst << std::endl;
+			std::cout << "[SASS] " << inst << std::endl;
 			while(true) {
 				char ch = std::cin.get();
 				if(ch == '\n') 
 					break;
 			}
 			#endif
-			try {
-				rfcArry[inst.wId % 32].exec(inst);
-			} catch (const std::exception & e) {
-				std::cerr << e.what() << std::endl;
-				return -1;
-			}
+
+			(inst.opcode == op::OP_IMMA || inst.opcode == op::OP_HMMA) ?
+				rfcArry.at(inst.wId % 32).execTC(inst) : 
+				rfcArry.at(inst.wId % 32).exec(inst);
+
+			#ifndef NDEBUG
+			std::cout << "[RFC] " << rfcArry.at(inst.wId % 32) << std::endl;
+			std::cout << "'[Stat] " << *stat << std::endl;
+			#endif
 		}
 		idx++;
 	}
 
 	std::cout << std::endl;
 	std::cout << "[RFC-sim] Statistics... " << std::endl;
-	std::cout << iStatSwp << std::endl;
-	std::cout << statSwp << std::endl;
-	std::cout << *stat << std::endl;
-	stat::RfcStat::printCmp(statSwp, *stat);
+	std::cout << *iStat << std::endl;
+	std::cout << *scoreboardBase << std::endl;
+	std::cout << *scoreboard << std::endl;
+	stat::RfcStat::printCmp(*scoreboardBase, *scoreboard);
 	std::cout << std::endl;
 
 	std::ofstream of(logFile, std::ios::app);
 	if (of.is_open()) {
-		Logger::logging(of, *cfg, *iStat, statSwp, *stat);
+		Logger::logging(of, *cfg, *iStat, *scoreboardBase, *scoreboard);
 		of.close();
 	}
     std::cout << "[RFC-sim] End.\n\n";

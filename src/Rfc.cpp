@@ -72,9 +72,9 @@ std::pair<bool, uint32_t> Cam::search(uint32_t tid, uint32_t tag, uint32_t setId
 // ============================================== RFC ===============================
 Rfc::Rfc(
     const std::shared_ptr<cfg::GlobalCfg> & cfg, 
-    const std::shared_ptr<stat::RfcStat> & scb, 
-    const std::shared_ptr<Mrf> & mrf
-) : cfg(cfg), scb(scb), mrf(mrf), cam(std::make_unique<Cam>(cfg->assoc, cfg->nBlk, cfg->nDW)) {} 
+    const std::shared_ptr<stat::RfcStat> & scbBase, 
+    const std::shared_ptr<stat::RfcStat> & scb 
+) : cfg(cfg), scbBase(scbBase), scb(scb), cam(std::make_unique<Cam>(cfg->assoc, cfg->nBlk, cfg->nDW)) {} 
 
 void Rfc::step() noexcept {
     cam->step();
@@ -143,9 +143,11 @@ void Rfc::exec(const TraceInst & inst) {
         if (tp == reg::OprdT::addr)  continue;
 
         for (auto tid = 0; tid < 32; tid++) {
-            if (!mask[tid])
+            if (!mask[31 - tid])
                 continue;
-            
+
+            (oprd.type == reg::OprdT::src) ? scbBase->trigger(stat::Event::mrfRd) : scbBase->trigger(stat::Event::mrfWr);
+
             std::pair<bool, uint32_t> s;
             s = search(oprd, tid, sMap(oprd));
 
@@ -171,6 +173,66 @@ void Rfc::exec(const TraceInst & inst) {
     }
     sync();
 }
+
+void Rfc::execTC(const TraceInst & inst) {
+    step();
+    
+    flags = inst.reuseFlag;
+    mask = inst.mask;
+
+    // CC Execution Flow 
+    for (const auto & oprd : inst.regPool) {
+        auto tp = oprd.type;
+        if (tp == reg::OprdT::addr)  continue;
+
+        for (auto tid = 0; tid < 32; tid++) {
+            if (!mask[31 - tid])
+                continue;
+
+            (oprd.type == reg::OprdT::src) ? scbBase->trigger(stat::Event::mrfRd) : scbBase->trigger(stat::Event::mrfWr);
+
+            std::pair<bool, uint32_t> s;
+            s = search(oprd, tid, sMap(oprd));
+
+            if (!s.first) {
+                (oprd.type == reg::OprdT::src) ? 
+                    scb->trigger(stat::Event::rdMiss) : scb->trigger(stat::Event::wrMiss);
+
+                // Dedicated Allocation Logic
+                if (oprd.type == reg::OprdT::src) {
+                    if (flags.test(3 - oprd.pos)) {
+                        auto p = replWrapper(tid, sMap(oprd));
+                        cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, false);
+
+                        simdBuf.at(1).set(tid); // RFC.W
+                        simdBuf.at(2).set(tid); // MRF.R
+
+                        if (p.first) simdBuf.at(3).set(tid); // MRF.W;
+                    }
+                    else
+                        simdBuf.at(2).set(tid); // MRF.R
+                }
+                else if (oprd.type == reg::OprdT::dst) {
+                    simdBuf.at(3).set(tid); // MRF.W;
+                }
+            }
+
+            else {
+                hitHandler(oprd, tid, s.second);
+            }
+        }
+
+        // Synchronize warp
+        scb->trigger(stat::Event::rfcRd, bankTxCnt(simdBuf.at(0)));
+        scb->trigger(stat::Event::rfcWr, bankTxCnt(simdBuf.at(1)));
+        scb->trigger(stat::Event::mrfRd, simdBuf.at(2).count());
+        scb->trigger(stat::Event::mrfWr, simdBuf.at(3).count());
+
+        flushSimdBuf();
+    }
+    sync();
+}
+
 
 inline void Rfc::hitHandler(const reg::Oprd& oprd, uint32_t tid, uint32_t idx) {
     
@@ -210,8 +272,7 @@ std::pair<bool, uint32_t> Rfc::replWrapper(uint32_t tid, uint32_t setId) {
         }
     }
 
-    bool dirty = cam->vMem[tid].at(maxPos).dt;
-    return std::make_pair<bool, uint32_t>(std::move(dirty), std::move(maxPos));
+    return std::make_pair<bool, uint32_t>(std::move(cam->vMem[tid].at(maxPos).dt), std::move(maxPos));
 }
 
 void Rfc::allocWrapper(const reg::Oprd & oprd, uint32_t tid) {
