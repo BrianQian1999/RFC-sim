@@ -15,7 +15,7 @@ namespace cfg {
     // default arch: sm75 (Turing)
     enum class SmArch {
         sm70, 
-        sm75 = 0,
+        sm75,
         sm80
     };
 
@@ -23,7 +23,8 @@ namespace cfg {
     enum class AllocPlcy {
         readAlloc=0,
         writeAlloc,
-        cplAidedAlloc
+        cplAidedAlloc,
+        lookAheadAlloc
     };
 
 	// Replacement policy
@@ -61,7 +62,8 @@ namespace cfg {
     inline const std::unordered_map<AllocPlcy, std::string> alloc2StrTab {
         std::pair<AllocPlcy, std::string>(AllocPlcy::readAlloc, "read-allocate"),
         std::pair<AllocPlcy, std::string>(AllocPlcy::writeAlloc, "write-allocate"),
-        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "compiler-aided allocate")
+        std::pair<AllocPlcy, std::string>(AllocPlcy::cplAidedAlloc, "compiler-aided allocate"),
+        std::pair<AllocPlcy, std::string>(AllocPlcy::lookAheadAlloc, "compiler-aided allocate with look-ahead")
     };
 
     inline std::ostream & operator<<(std::ostream & os, const AllocPlcy & plcy) {
@@ -107,7 +109,7 @@ namespace cfg {
     };
 
     inline std::ostream & operator<<(std::ostream & os, const EngyMdl & eMdl) {
-        std::cout << "(RFC.r, RFC.w, MRF.r, MRF.w) -> (\n\t";
+        std::cout << "(RFC.r, RFC.w, MRF.r, MRF.w) -> (";
         std::cout << eMdl.eRfcRd << ", " 
                   << eMdl.eRfcWr << ", " 
                   << eMdl.eMrfRd << ", " 
@@ -128,6 +130,8 @@ namespace cfg {
         uint32_t nDW;
         uint32_t bw;
 
+        uint32_t wl; // window length
+
         EngyMdl eMdl;
 
         GlobalCfg() {}
@@ -135,10 +139,17 @@ namespace cfg {
     };
 
     inline std::ostream & operator<<(std::ostream & os, const GlobalCfg & cfg) {
-        os << "[RFC]: (arch, alloc, repl, evict, assoc, nBlk, nDW, bitwidth, energy model) -> \n\t("
-           << cfg.arch << ", " << cfg.alloc << ", " << cfg.repl << ", " << cfg.ev << ", " 
-           << cfg.assoc << ", " << cfg.nBlk << ", " << cfg.nDW << ", " << cfg.bw << ", " 
-           << cfg.eMdl << ")\n";
+        os << "[RFC Config]:\n\t";
+        os << "<GPU Arch>:                          " << cfg.arch << "\n\t";
+        os << "<Allocation>:                        " << cfg.alloc << "\n\t";
+        os << "<Replacement>:                       " << cfg.repl << "\n\t";
+        os << "<Eviction>:                          " << cfg.ev << "\n\t";
+        os << "<Look-ahead window (optional)>:      " << cfg.wl << "\n\t";
+        os << "<Associativity>:                     " << cfg.assoc << "\n\t";
+        os << "<# of cache blocks>:                 " << cfg.nBlk << "\n\t";
+        os << "<Cache bank bitwidth>:               " << cfg.bw << "\n\t";
+        os << "<Energy Model>:                      " << cfg.eMdl << std::endl;
+
         return os;
     }
 

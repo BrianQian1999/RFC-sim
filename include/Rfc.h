@@ -1,18 +1,21 @@
-#pragma once
-
-#include "Mrf.h"
-#include "Stat.h"
+#pragma once 
 
 #include <iostream>
 #include <vector>
 #include <array>
+#include <bitset>
+#include <queue>
 #include <memory>
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
 
-struct RfcBlock {
-	RfcBlock();
+#include "Alloc.h"
+#include "Stat.h"
+#include "Instr.h"
+
+struct CacheEntry {
+	CacheEntry();
     uint32_t tag; 
 	uint32_t age;
     bool dt;
@@ -22,7 +25,7 @@ struct RfcBlock {
 	void set(uint32_t, uint32_t, bool) noexcept;
 };
 
-inline std::ostream & operator<<(std::ostream &, const RfcBlock&);
+inline std::ostream & operator<<(std::ostream &, const CacheEntry&);
 
 struct Cam {
 
@@ -31,8 +34,8 @@ struct Cam {
 		for (auto & b : vMem) b.resize(nBlk);
 	}
 
-	std::array<std::vector<RfcBlock>, 32> mem;
-	std::array<std::vector<RfcBlock>, 32> vMem;
+	std::array<std::vector<CacheEntry>, 32> mem;
+	std::array<std::vector<CacheEntry>, 32> vMem;
 
 	uint32_t assoc;
 	uint32_t nDW; 
@@ -46,43 +49,43 @@ struct Cam {
 
 inline std::ostream & operator<<(std::ostream &, const Cam&);
 
-class Rfc{
-private:
-	std::shared_ptr<cfg::GlobalCfg> cfg;
-	std::shared_ptr<stat::RfcStat> scbBase;
-	std::shared_ptr<stat::RfcStat> scb;
-	std::unique_ptr<Cam> cam;
+struct BaseAllocator;
 
+struct Rfc{
+	std::shared_ptr<cfg::GlobalCfg> cfg; // configuration
+	std::shared_ptr<stat::Stat> scbBase; // scoreboard baseline
+	std::shared_ptr<stat::Stat> scb; // sccoreboard
+	std::unique_ptr<Cam> cam; // 
+	BaseAllocator * allocator;
+	
 	std::bitset<32> mask;
 	std::bitset<4> flags;
-
+	std::queue<sass::Instr> iQueue; // Instruction Queue
 	std::array<std::bitset<32>, 4> simdBuf;
-public:
+	
+	
 	explicit Rfc(
 		const std::shared_ptr<cfg::GlobalCfg>&,
-		const std::shared_ptr<stat::RfcStat>&,
-		const std::shared_ptr<stat::RfcStat>&
+		const std::shared_ptr<stat::Stat>&,
+		const std::shared_ptr<stat::Stat>&
 	);
 
+	~Rfc();
+
+	Rfc(const Rfc&); // copy constructor
+
 	inline uint32_t bankTxCnt(const std::bitset<32>&);
-	uint32_t sMap(const reg::Oprd&) noexcept;
+	uint32_t getCacheSet(const reg::Oprd&) noexcept;
 
 	std::pair<bool, uint32_t> search(const reg::Oprd&, uint32_t, uint32_t);
 	
 	void step() noexcept;
 	void sync();
-	void exec(const TraceInst&);
-	void execTC(const TraceInst&);
+	bool exec(const sass::Instr&);
 	void flushSimdBuf();
 	
 	inline void hitHandler(const reg::Oprd&, uint32_t, uint32_t);
 	
 	std::pair<bool, uint32_t> replWrapper(uint32_t, uint32_t);
-	void allocWrapper(const reg::Oprd&, uint32_t);
-	
-	void readAlloc(const reg::Oprd&, uint32_t);
-	void writeAlloc(const reg::Oprd&, uint32_t);
-	void cplAidedAlloc(const reg::Oprd&, uint32_t);
-
 	friend std::ostream & operator<<(std::ostream&, const Rfc&);
 };

@@ -34,10 +34,10 @@ int main(int argc, char ** argv) {
 	const std::string logFile = std::string(argv[8]);
 	const std::string traceListFile = traceDir + "/kernelslist.g";
 
-	std::cout << "[RFC-sim] Start ..." << std::endl;
-	std::cout << "[RFC-sim] trace file dir: " << traceListFile << std::endl;
+	std::cout << "[RFC-sim] Parsing input arguments..." << std::endl;
+	std::cout << "[RFC-sim] Trace file directory: " << traceListFile << std::endl;
 	std::cout << "[RFC-sim] Config file: " << cfgFile << std::endl;
-    std::cout << "[RFC-sim] asm file: " << asmFile << std::endl;
+    std::cout << "[RFC-sim] Assembly file: " << asmFile << std::endl;
 	
 	// detect all kernels
 	std::ifstream traceListIf(traceListFile);
@@ -59,7 +59,9 @@ int main(int argc, char ** argv) {
 	std::shared_ptr<cfg::GlobalCfg> cfg = std::make_shared<cfg::GlobalCfg>(); 
     std::unique_ptr<cfg::CfgParser> cfgParser = std::make_unique<cfg::CfgParser>(cfgFile, cfg);
 	cfgParser->parse();
+	std::cout << "\n-----------------------------------------------------------------------------------------\n";
 	cfgParser->print();
+	std::cout << "\n-----------------------------------------------------------------------------------------\n\n";
 
 	using mapT = std::unordered_map<uint32_t, std::bitset<4>>;
 	std::unique_ptr<AsmParser> asmParser = std::make_unique<AsmParser>(
@@ -77,57 +79,56 @@ int main(int argc, char ** argv) {
 
 	// statistics
 	auto eMdl = cfg->eMdl;
-	std::shared_ptr<stat::RfcStat> scoreboardBase = std::make_shared<stat::RfcStat>(eMdl);
-	std::shared_ptr<stat::RfcStat> scoreboard = std::make_shared<stat::RfcStat>(eMdl);
-	std::shared_ptr<stat::InstStat> iStat = std::make_shared<stat::InstStat>();	
+	std::shared_ptr<stat::Stat> scoreboardBase = std::make_shared<stat::Stat>(eMdl);
+	std::shared_ptr<stat::Stat> scoreboard = std::make_shared<stat::Stat>(eMdl);
 
 	// RFC
-    std::cout << "[RFC-sim] Simulating..." << std::endl;
+    std::cout << "[RFC-sim] Simulating >>> " << std::endl;
 	std::vector<Rfc> rfcArry;
+
+	// Initialize RFC instance for each warp on SM core (e.g., for TU102, 4 sub-core * 8 warps = 32)
 	for (auto i = 0; i < 32; i++)
 		rfcArry.push_back(Rfc(cfg, scoreboardBase, scoreboard));
-
-	size_t idx = 0;
+	
+	// Traverse GPU Kernels
 	for(auto & traceFile : traceList) {
 		traceParser->reset(traceFile);
 
-		while(!traceParser->eof()) {
+		bool eof = false;
+		while(!eof) {
 			auto inst = traceParser->parse();
-			if (inst.opcode == op::OP_VOID)
-				break;
 
-			#ifndef NDEBUG
-			std::cout << "[SASS] " << inst << std::endl;
+#ifndef NDEBUG
 			while(true) {
 				char ch = std::cin.get();
 				if(ch == '\n') 
 					break;
 			}
-			#endif
+#endif
 
-			(inst.opcode == op::OP_IMMA || inst.opcode == op::OP_HMMA) ?
-				rfcArry.at(inst.wId % 32).execTC(inst) : 
-				rfcArry.at(inst.wId % 32).exec(inst);
-
-			#ifndef NDEBUG
+			eof = rfcArry.at(inst.wId % 32).exec(inst);
+			
+#ifndef NDEBUG
 			std::cout << "[RFC] " << rfcArry.at(inst.wId % 32) << std::endl;
-			std::cout << "'[Stat] " << *stat << std::endl;
-			#endif
+			std::cout << "'[Stat] " << *scoreboard << std::endl;
+#endif
 		}
-		idx++;
 	}
+    
+	std::cout << "[RFC-sim] <<< Simulation End" << std::endl;
 
-	std::cout << std::endl;
-	std::cout << "[RFC-sim] Statistics... " << std::endl;
-	std::cout << *iStat << std::endl;
+	std::cout << "--------------------------------------------------------------------------------\n";
+	std::cout << "[RFC-sim] Statistics " << std::endl;
 	std::cout << *scoreboardBase << std::endl;
 	std::cout << *scoreboard << std::endl;
-	stat::RfcStat::printCmp(*scoreboardBase, *scoreboard);
+	stat::Stat::printCmp(*scoreboardBase, *scoreboard);
 	std::cout << std::endl;
+	std::cout << "--------------------------------------------------------------------------------\n";
 
+	// Logging
 	std::ofstream of(logFile, std::ios::app);
 	if (of.is_open()) {
-		Logger::logging(of, *cfg, *iStat, *scoreboardBase, *scoreboard);
+		Logger::logging(of, *cfg, *scoreboardBase, *scoreboard);
 		of.close();
 	}
     std::cout << "[RFC-sim] End.\n\n";

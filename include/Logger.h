@@ -9,9 +9,8 @@ namespace Logger {
     void logging(
         std::ofstream &,
         const cfg::GlobalCfg&,
-        const stat::InstStat&, 
-        const stat::RfcStat&,
-        const stat::RfcStat&
+        const stat::Stat&,
+        const stat::Stat&
     );
 
 };

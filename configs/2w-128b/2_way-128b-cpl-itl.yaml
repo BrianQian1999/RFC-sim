@@ -2,6 +2,7 @@ arch: 0
 assoc: 2
 n_block: 8
 n_dw: 1
+window_len: 0
 policy: 
   - alloc: 2
   - repl: 1

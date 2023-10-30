@@ -1,27 +1,27 @@
 #include "Rfc.h"
 
-RfcBlock::RfcBlock() {
+CacheEntry::CacheEntry() {
     tag = 256;
     age = 0;
     dt = false;
 }
 
-std::ostream & operator<<(std::ostream & os, const RfcBlock & e) {
+std::ostream & operator<<(std::ostream & os, const CacheEntry & e) {
     os << "(" << e.tag << "," << e.age << "," << e.dt << ")";
     return os;
 }
 
-void RfcBlock::clear() noexcept {
+void CacheEntry::clear() noexcept {
     tag = 256;
     age = 0;
     dt = false;
 }
 
-void RfcBlock::step() noexcept {
+void CacheEntry::step() noexcept {
     age++;
 }
 
-void RfcBlock::set(uint32_t tag, uint32_t age, bool dt) noexcept {
+void CacheEntry::set(uint32_t tag, uint32_t age, bool dt) noexcept {
     this->tag = tag;
     this->age = age;
     this->dt = dt;
@@ -72,9 +72,32 @@ std::pair<bool, uint32_t> Cam::search(uint32_t tid, uint32_t tag, uint32_t setId
 // ============================================== RFC ===============================
 Rfc::Rfc(
     const std::shared_ptr<cfg::GlobalCfg> & cfg, 
-    const std::shared_ptr<stat::RfcStat> & scbBase, 
-    const std::shared_ptr<stat::RfcStat> & scb 
-) : cfg(cfg), scbBase(scbBase), scb(scb), cam(std::make_unique<Cam>(cfg->assoc, cfg->nBlk, cfg->nDW)) {} 
+    const std::shared_ptr<stat::Stat> & scbBase, 
+    const std::shared_ptr<stat::Stat> & scb 
+) : cfg(cfg), scbBase(scbBase), scb(scb) {
+    cam = std::make_unique<Cam>(cfg->assoc, cfg->nBlk, cfg->nDW);
+    allocator = AllocatorFactory::getInstance(this, *cfg);
+    if (!allocator)
+        throw std::runtime_error("null allocator.\n");
+}
+
+Rfc::Rfc(const Rfc& rfcCpy) {
+    cfg = rfcCpy.cfg;
+    scbBase = rfcCpy.scbBase;
+    scb = rfcCpy.scb;
+    mask = rfcCpy.mask;
+    flags = rfcCpy.flags;
+    simdBuf = rfcCpy.simdBuf;
+    iQueue = rfcCpy.iQueue; 
+    cam = std::make_unique<Cam>(cfg->assoc, cfg->nBlk, cfg->nDW);
+    allocator = AllocatorFactory::getInstance(this, *cfg);
+    if (!allocator)
+        throw std::runtime_error("null allocator.\n");
+}
+
+Rfc::~Rfc() {
+    delete allocator;
+}
 
 void Rfc::step() noexcept {
     cam->step();
@@ -95,7 +118,7 @@ uint32_t Rfc::bankTxCnt(const std::bitset<32>& buf) {
     return acc;
 }
 
-uint32_t Rfc::sMap(const reg::Oprd& oprd) noexcept {
+uint32_t Rfc::getCacheSet(const reg::Oprd& oprd) noexcept {
     
     // Map source operands based on index
     if (oprd.type == reg::OprdT::src)
@@ -131,14 +154,37 @@ void Rfc::flushSimdBuf() {
     }
 }
 
-void Rfc::exec(const TraceInst & inst) {
+bool Rfc::exec(const sass::Instr & inst) {
+    sass::Instr instFront;
+    if (cfg->wl == 0 && inst.opcode != op::OP_VOID) {
+		instFront = inst;
+	}
+	else if (cfg->wl == 0 && inst.opcode == op::OP_VOID) {
+		return true;
+	}
+	else if (iQueue.size() < cfg->wl && inst.opcode != op::OP_VOID) { // warming up
+        iQueue.push(inst);
+        return false;
+    }
+    else if (iQueue.size() <= cfg->wl && iQueue.size() != 0 && inst.opcode == op::OP_VOID) { // drain
+        instFront = iQueue.front();
+        iQueue.pop();
+    }
+    else if (iQueue.size() == 0 && inst.opcode == op::OP_VOID) { // drain end
+        return true; // EOF
+    } 
+    else { // stable
+        instFront = iQueue.front();
+        iQueue.push(inst);
+        iQueue.pop();
+    }
+
     step();
-    
-    flags = inst.reuseFlag;
-    mask = inst.mask;
+    flags = instFront.reuseFlag;
+    mask = instFront.mask;
 
     // CC Execution Flow 
-    for (const auto & oprd : inst.regPool) {
+    for (const auto & oprd : instFront.regPool) {
         auto tp = oprd.type;
         if (tp == reg::OprdT::addr)  continue;
 
@@ -149,13 +195,13 @@ void Rfc::exec(const TraceInst & inst) {
             (oprd.type == reg::OprdT::src) ? scbBase->trigger(stat::Event::mrfRd) : scbBase->trigger(stat::Event::mrfWr);
 
             std::pair<bool, uint32_t> s;
-            s = search(oprd, tid, sMap(oprd));
+            s = search(oprd, tid, getCacheSet(oprd));
 
             if (!s.first) {
                 (oprd.type == reg::OprdT::src) ? 
                     scb->trigger(stat::Event::rdMiss) : scb->trigger(stat::Event::wrMiss);
 
-                allocWrapper(oprd, tid);
+                allocator->alloc(oprd, tid);
             }
 
             else {
@@ -172,69 +218,10 @@ void Rfc::exec(const TraceInst & inst) {
         flushSimdBuf();
     }
     sync();
+    return false;
 }
 
-void Rfc::execTC(const TraceInst & inst) {
-    step();
-    
-    flags = inst.reuseFlag;
-    mask = inst.mask;
-
-    // CC Execution Flow 
-    for (const auto & oprd : inst.regPool) {
-        auto tp = oprd.type;
-        if (tp == reg::OprdT::addr)  continue;
-
-        for (auto tid = 0; tid < 32; tid++) {
-            if (!mask[31 - tid])
-                continue;
-
-            (oprd.type == reg::OprdT::src) ? scbBase->trigger(stat::Event::mrfRd) : scbBase->trigger(stat::Event::mrfWr);
-
-            std::pair<bool, uint32_t> s;
-            s = search(oprd, tid, sMap(oprd));
-
-            if (!s.first) {
-                (oprd.type == reg::OprdT::src) ? 
-                    scb->trigger(stat::Event::rdMiss) : scb->trigger(stat::Event::wrMiss);
-
-                // Dedicated Allocation Logic
-                if (oprd.type == reg::OprdT::src) {
-                    if (flags.test(3 - oprd.pos)) {
-                        auto p = replWrapper(tid, sMap(oprd));
-                        cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, false);
-
-                        simdBuf.at(1).set(tid); // RFC.W
-                        simdBuf.at(2).set(tid); // MRF.R
-
-                        if (p.first) simdBuf.at(3).set(tid); // MRF.W;
-                    }
-                    else
-                        simdBuf.at(2).set(tid); // MRF.R
-                }
-                else if (oprd.type == reg::OprdT::dst) {
-                    simdBuf.at(3).set(tid); // MRF.W;
-                }
-            }
-
-            else {
-                hitHandler(oprd, tid, s.second);
-            }
-        }
-
-        // Synchronize warp
-        scb->trigger(stat::Event::rfcRd, bankTxCnt(simdBuf.at(0)));
-        scb->trigger(stat::Event::rfcWr, bankTxCnt(simdBuf.at(1)));
-        scb->trigger(stat::Event::mrfRd, simdBuf.at(2).count());
-        scb->trigger(stat::Event::mrfWr, simdBuf.at(3).count());
-
-        flushSimdBuf();
-    }
-    sync();
-}
-
-
-inline void Rfc::hitHandler(const reg::Oprd& oprd, uint32_t tid, uint32_t idx) {
+void Rfc::hitHandler(const reg::Oprd& oprd, uint32_t tid, uint32_t idx) {
     
     if (oprd.type == reg::OprdT::src) {
         scb->trigger(stat::Event::rdHit);
@@ -273,64 +260,6 @@ std::pair<bool, uint32_t> Rfc::replWrapper(uint32_t tid, uint32_t setId) {
     }
 
     return std::make_pair<bool, uint32_t>(std::move(cam->vMem[tid].at(maxPos).dt), std::move(maxPos));
-}
-
-void Rfc::allocWrapper(const reg::Oprd & oprd, uint32_t tid) {
-    switch(cfg->alloc) {
-        case(cfg::AllocPlcy::cplAidedAlloc): return cplAidedAlloc(oprd, tid);
-        case(cfg::AllocPlcy::readAlloc): return readAlloc(oprd, tid);
-        case(cfg::AllocPlcy::writeAlloc): return writeAlloc(oprd, tid);
-        default: return cplAidedAlloc(oprd, tid);
-    }
-}
-
-void Rfc::readAlloc(const reg::Oprd & oprd, uint32_t tid) {
-    if (oprd.type == reg::OprdT::src) {
-        auto p = replWrapper(tid, sMap(oprd)); 
-        cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, false);
-
-        simdBuf.at(1).set(tid); // RFC.W
-        simdBuf.at(2).set(tid); // MRF.R
-
-        if (p.first) simdBuf.at(3).set(tid); // MRF.W
-    } 
-    else if (oprd.type == reg::OprdT::dst) {
-        simdBuf.at(3).set(tid); // MRF.W
-    }
-}
-
-void Rfc::writeAlloc(const reg::Oprd & oprd, uint32_t tid) {
-    if (oprd.type == reg::OprdT::dst) {
-        auto p = replWrapper(tid, sMap(oprd));
-        cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, true);
-        
-        simdBuf.at(1).set(tid); // RFC.W
-        if (p.first) simdBuf.at(3).set(tid); // MRF.W;
-    }
-    else if (oprd.type == reg::OprdT::src)
-        simdBuf.at(2).set(tid); // MRF.R
-}
-
-void Rfc::cplAidedAlloc(const reg::Oprd & oprd, uint32_t tid) {
-    if (oprd.type == reg::OprdT::src) {
-        if (flags.test(3 - oprd.pos)) {
-            auto p = replWrapper(tid, sMap(oprd));
-            cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, false);
-
-            simdBuf.at(1).set(tid); // RFC.W
-            simdBuf.at(2).set(tid); // MRF.R
-
-            if (p.first) simdBuf.at(3).set(tid); // MRF.W;
-        }
-        else
-            simdBuf.at(2).set(tid); // MRF.R
-    }
-    else if (oprd.type == reg::OprdT::dst) {
-        auto p = replWrapper(tid, sMap(oprd));
-        cam->vMem[tid].at(p.second).set(oprd.index / cfg->nDW, 1, true);
-        simdBuf.at(1).set(tid); // RFC.W
-        if (p.first) simdBuf.at(3).set(tid); // MRF.W;
-    }
 }
 
 std::ostream & operator<<(std::ostream & os, const Rfc & cc) {

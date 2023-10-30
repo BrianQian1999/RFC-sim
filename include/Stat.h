@@ -19,24 +19,9 @@ namespace stat {
         mrfWr
     };
 
-    struct InstStat {
-        uint64_t mmaInstNum;
-        uint64_t totInstNum;
-        InstStat();
-        void clear() noexcept;
-    };
-
-    inline std::ostream & operator<<(std::ostream & os, const InstStat & s) {
-        float mmaInstDensity = (float) s.mmaInstNum / s.totInstNum * 100.0;
-        os << "\t(tot inst, mma inst, mma density) -> (" 
-           << s.totInstNum << ", " << s.mmaInstNum << ", " << mmaInstDensity << "\%)"
-           << std::endl;
-        return os;
-    }
-    
-    struct RfcStat {
+    struct Stat {
         cfg::EngyMdl eMdl;
-        explicit RfcStat(const cfg::EngyMdl&);
+        explicit Stat(const cfg::EngyMdl&);
 
         uint64_t mrfRdNum;
         uint64_t mrfWrNum;
@@ -58,10 +43,10 @@ namespace stat {
         void clear() noexcept;
         float calcRfEngy() const;
 
-        static void printCmp(const RfcStat &, const RfcStat&);
+        static void printCmp(const Stat &, const Stat&);
     };
 
-    inline std::ostream & operator<<(std::ostream & os, const RfcStat & s) {
+    inline std::ostream & operator<<(std::ostream & os, const Stat & s) {
         os << "\t(RFC.R, RFC.W, MRF.R, MRF.W) -> (" 
            << s.rfcRdNum << ", " << s.rfcWrNum << ", "
            << s.mrfRdNum << ", " << s.mrfWrNum << ")\n";

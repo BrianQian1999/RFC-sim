@@ -18,6 +18,7 @@ namespace cfg {
         try {
             cfg->arch = static_cast<SmArch>(yamlNode["arch"].as<int>());
             cfg->alloc = static_cast<AllocPlcy>(yamlNode["policy"][0]["alloc"].as<int>());
+            cfg->wl = cfg->alloc != AllocPlcy::lookAheadAlloc ? 0 : yamlNode["window_len"].as<int>();
             cfg->repl = static_cast<ReplPlcy>(yamlNode["policy"][1]["repl"].as<int>());
             cfg->ev = static_cast<EvictPlcy>(yamlNode["policy"][2]["evict"].as<int>());
             cfg->dMap = static_cast<DestMap>(yamlNode["policy"][3]["dest_map"].as<int>());

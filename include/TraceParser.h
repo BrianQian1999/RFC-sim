@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <cctype>
 
-#include "TraceInst.h"
+#include "Instr.h"
 #include "AsmParser.h"
 
 struct KernelInfo {
@@ -63,7 +63,7 @@ public:
 
     void extendHmmaRegs(std::vector<reg::Oprd>&) const;
     void extendImmaRegs(std::vector<reg::Oprd>&) const;
-    TraceInst parseInst(const std::vector<std::string> &);
-    TraceInst parse();
+    sass::Instr parseInst(const std::vector<std::string> &);
+    sass::Instr parse();
 };
 

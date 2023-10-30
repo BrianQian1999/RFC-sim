@@ -130,7 +130,7 @@ void TraceParser::extendImmaRegs(std::vector<reg::Oprd> & oprds) const {
     oprds.push_back(reg::Oprd(reg::OprdT::dst, matD.index + 1, 3, 1));
 }
 
-TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
+sass::Instr TraceParser::parseInst(const std::vector<std::string>& toks) {
     if (toks.size() < 6) 
         throw std::invalid_argument("Invalid input: toks.size()<6.\n");
 
@@ -175,7 +175,7 @@ TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
         regs.push_back(parseReg(toks.at(3), reg::OprdT::dst, 0));
         if (opcode == op::OP_HMMA) extendHmmaRegs(regs);
         if (opcode == op::OP_IMMA) extendImmaRegs(regs);
-        return TraceInst(pc, mask, blockId, wId, opcode, regs, flags);
+        return sass::Instr(pc, mask, blockId, wId, opcode, regs, flags);
     }
     else if (toks.at(2) == "0") {
         opcode = this->parseOpcode(toks.at(3));
@@ -191,15 +191,15 @@ TraceInst TraceParser::parseInst(const std::vector<std::string>& toks) {
                 curPos++;
             }
         }
-        return TraceInst(pc, mask, blockId, wId, opcode, regs, flags);
+        return sass::Instr(pc, mask, blockId, wId, opcode, regs, flags);
     }
     else 
-        return TraceInst(); 
+        return sass::Instr(); 
 }
 
 
-TraceInst TraceParser::parse() {
-    if (eof()) return TraceInst();
+sass::Instr TraceParser::parse() {
+    if (eof()) return sass::Instr();
 
     std::string instStr;
     std::getline(traceIfs, instStr);

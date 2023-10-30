@@ -4,9 +4,8 @@ namespace Logger {
     void logging (
         std::ofstream& of,
         const cfg::GlobalCfg& cfg,
-        const stat::InstStat& iStat,
-        const stat::RfcStat& statBase,
-        const stat::RfcStat& statOpt 
+        const stat::Stat& statBase,
+        const stat::Stat& statOpt 
     ) {
         of << "(" << cfg.assoc << "-way : " << cfg.alloc << " : " << cfg.repl << " : " <<  cfg.ev << ");"; 
         

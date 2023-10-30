@@ -3,3 +3,4 @@ asm/*
 log/*
 scr/*
 .vscode/*
+configs/*
