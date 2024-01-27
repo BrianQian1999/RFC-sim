@@ -4,3 +4,7 @@ log/*
 scr/*
 .vscode/*
 configs/*
+build/*
+build
+traces/*
+traces
